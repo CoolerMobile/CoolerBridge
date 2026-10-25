@@ -1,11 +1,19 @@
 import { z } from "zod"
 
+/**
+ * coolify schema
+ *
+ * dependent on coolify's documented
+ * webhook payload reference
+ *
+ * @see https://coolify.io/docs/core/notifications/channels/webhook/payload-reference
+ */
 export const coolifyWebhookSchema = z.object({
   success: z.boolean(),
   event: z.string(),
   message: z.string(),
 
-  // Event-dependent fields
+  // event-dependent fields
   application_name: z.string().optional(),
   application_uuid: z.string().optional(),
   deployment_uuid: z.string().optional(),
