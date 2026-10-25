@@ -3,7 +3,8 @@ import { bridges } from "@/lib/store"
 
 export const bridgeRoutes = new Hono()
 
-// per-bridge route
+// creates a cryptographically-random id and creates
+// a new bridge with that same id, storing it
 bridgeRoutes.post("/", (context) => {
   // cryptographically random id
   const id = `brg_${Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString("base64url")}`
