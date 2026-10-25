@@ -6,12 +6,12 @@ import { normalizeEvent } from "@/services/normalize"
 
 export const coolifyWebhook = new Hono()
 
-coolifyWebhook.post("/:bridgeId", zValidator("json", coolifyWebhookSchema), async (context) => {
-  const bridgeId = context.req.param("bridgeId")
+coolifyWebhook.post("/:secret", zValidator("json", coolifyWebhookSchema), async (context) => {
+  const secret = context.req.param("secret")
   const payload = context.req.valid("json")
 
   // bridge
-  const bridge = bridges.get(bridgeId)
+  const bridge = bridges.get(secret)
 
   // validate bridge id
   if (!bridge) {

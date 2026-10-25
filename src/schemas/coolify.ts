@@ -1,8 +1,6 @@
 import { z } from "zod"
 
 /**
- * coolify schema
- *
  * dependent on coolify's documented
  * webhook payload reference
  *
