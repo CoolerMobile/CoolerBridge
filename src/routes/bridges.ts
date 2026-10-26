@@ -1,23 +1,35 @@
 import { Hono } from "hono"
-import { bridges } from "@/lib/store"
+import { db } from "@/db"
+import { bridges } from "@/db/schema"
+import { genSecret } from "@/services/secrets"
 
 export const bridgeRoutes = new Hono()
 
-// creates a cryptographically-random id and creates
-// a new bridge with that same id, storing it
-bridgeRoutes.post("/", (context) => {
+// creates a new bridge with a random secret id
+bridgeRoutes.post("/", async (context) => {
   // cryptographically random id
-  const id = `brg_${Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString("base64url")}`
+  const randomId = genSecret()
 
   // bridge
-  const bridge = { id, createdAt: new Date().toISOString() }
-  bridges.set(id, bridge)
+  const [bridge] = await db.insert(bridges).values({ secret: randomId }).returning()
 
-  // return bridge if created
+  // validate creation
+  if (!bridge) {
+    return context.json(
+      {
+        error: "Failed to create bridge",
+      },
+      500
+    )
+  }
+
+  // bridge created
   return context.json(
     {
-      ...bridge,
-      webhookUrl: `v1/webhooks/coolify/${id}`,
+      id: bridge.id,
+      name: bridge.name,
+      createdAt: bridge.createdAt,
+      webhookUrl: `/v1/webhooks/coolify/${bridge.secret}`,
     },
     201
   )
