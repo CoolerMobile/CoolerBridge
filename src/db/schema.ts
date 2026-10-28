@@ -71,3 +71,28 @@ export const cloudLinks = pgTable("cloud_links", {
     withTimezone: true,
   }),
 })
+
+// sessions table
+export const sessions = pgTable("sessions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  cloudLinkId: uuid("cloud_link_id")
+    .notNull()
+    .references(() => cloudLinks.id, {
+      onDelete: "cascade",
+    }),
+  tokenDigest: text("token_digest").notNull().unique(),
+  expiresAt: timestamp("expires_at", {
+    withTimezone: true,
+  }).notNull(),
+  createdAt: timestamp("created_at", {
+    withTimezone: true,
+  })
+    .notNull()
+    .defaultNow(),
+  lastUsedAt: timestamp("last_used_at", {
+    withTimezone: true,
+  }),
+  revokedAt: timestamp("revoked_at", {
+    withTimezone: true,
+  }),
+})
