@@ -1,6 +1,9 @@
 # db
 drizzle
 
+# dev extras
+dev
+
 # Node
 logs
 *.log

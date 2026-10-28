@@ -39,3 +39,35 @@ export const events = pgTable("events", {
     .notNull()
     .defaultNow(),
 })
+
+// pairing challenges table
+export const pairingChallenges = pgTable("pairing_challenges", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  codeDigest: text("code_digest").notNull().unique(),
+  expiresAt: timestamp("expires_at", {
+    withTimezone: true,
+  }).notNull(),
+  usedAt: timestamp("used_at", {
+    withTimezone: true,
+  }),
+  createdAt: timestamp("created_at", {
+    withTimezone: true,
+  })
+    .notNull()
+    .defaultNow(),
+})
+
+// cloud links table
+export const cloudLinks = pgTable("cloud_links", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  cloudUserId: text("cloud_user_id").notNull(),
+  cloudBridgeId: text("cloud_bridge_id").notNull().unique(),
+  createdAt: timestamp("created_at", {
+    withTimezone: true,
+  })
+    .notNull()
+    .defaultNow(),
+  revokedAt: timestamp("revoked_at", {
+    withTimezone: true,
+  }),
+})
