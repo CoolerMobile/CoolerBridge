@@ -5,7 +5,7 @@ import { bridgeRoutes } from "@/routes/bridges"
 import { infoRoute } from "@/routes/info"
 import { eventRoutes } from "@/routes/events"
 import { pairingRoutes } from "@/routes/pair"
-import { authRoutes } from "./routes/auth"
+import { authRoutes } from "@/routes/auth"
 
 const app = new Hono()
 
