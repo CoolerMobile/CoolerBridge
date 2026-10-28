@@ -4,6 +4,9 @@ drizzle
 # dev extras
 dev
 
+# apple bs
+.DS_Store
+
 # Node
 logs
 *.log
