@@ -32,25 +32,58 @@ if (!pubKey) {
  *
  * @param assertion assertion to verify
  */
-export const verifyAssertion = async (assertion: string): Promise<CloudPairingAssertion> => {
+export const verifyPairAssertion = async (assertion: string): Promise<CloudPairingAssertion> => {
+  // extract & validate payload
   const { payload } = await jwtVerify(assertion, pubKey, {
     algorithms: [alg],
     issuer: "https://cloud.getcooler.app",
     audience: "coolerbridge",
   })
 
+  // validate payload data
   if (
     typeof payload.sub !== "string" ||
     typeof payload.bridgeId !== "string" ||
     typeof payload.pairingId !== "string"
   ) {
-    console.error("Invalid cloud assertion:")
     throw new Error("Invalid cloud assertion")
   }
 
+  // return normalized assertion
   return {
     cloudUserId: payload.sub,
     cloudBridgeId: payload.bridgeId,
     pairingId: payload.pairingId,
+  }
+}
+
+/**
+ * verifies cloud access assertion against valid public key
+ *
+ * @param assertion assertion to verify
+ */
+export const verifyCloudAssertion = async (assertion: string) => {
+  // payload
+  const { payload } = await jwtVerify(assertion, pubKey, {
+    algorithms: [alg],
+    issuer: "https://cloud.getcooler.app",
+    audience: "coolerbridge",
+  })
+
+  // validate payload data
+  if (typeof payload.sub !== "string" || typeof payload.bridgeId !== "string") {
+    throw new Error("Invalid access assertion")
+  }
+
+  // extract scope from payload
+  const scope = Array.isArray(payload.scope)
+    ? payload.scope.filter((value): value is string => typeof value === "string")
+    : []
+
+  // return normalized assertion
+  return {
+    cloudUserId: payload.sub,
+    cloudBridgeId: payload.bridgeId,
+    scope,
   }
 }

@@ -4,7 +4,7 @@ import { cloudLinks, pairingChallenges } from "@/db/schema"
 import { zValidator } from "@hono/zod-validator"
 import { completePairingSchema } from "@/schemas/bridge"
 import { and, eq, gt, isNull } from "drizzle-orm"
-import { verifyAssertion } from "@/auth/cloud"
+import { verifyPairAssertion } from "@/auth/cloud"
 import { codeDigest, generateCode } from "@/auth/utils"
 
 export const pairingRoutes = new Hono()
@@ -80,7 +80,7 @@ pairingRoutes.post("/complete", zValidator("json", completePairingSchema), async
   // validate cloud assertion
   let cloud
   try {
-    cloud = await verifyAssertion(assertion)
+    cloud = await verifyPairAssertion(assertion)
   } catch (error) {
     console.error("invalid cloud assertion:", error)
     return context.json({ error: "Invalid cloud assertion" }, 401)
