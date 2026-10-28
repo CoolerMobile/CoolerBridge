@@ -64,6 +64,7 @@ authRoutes.post("/exchange", zValidator("json", exchangeSchema), async (context)
     .values({
       cloudLinkId: link.id,
       tokenDigest,
+      scopes: cloud.scope,
       expiresAt,
     })
     .returning({
