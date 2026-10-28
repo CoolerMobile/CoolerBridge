@@ -2,7 +2,7 @@
 drizzle
 
 # dev extras
-dev
+dev/keys
 
 # apple bs
 .DS_Store
