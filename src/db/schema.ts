@@ -81,6 +81,7 @@ export const sessions = pgTable("sessions", {
       onDelete: "cascade",
     }),
   tokenDigest: text("token_digest").notNull().unique(),
+  scopes: jsonb("scopes").$type<string[]>().notNull().default([]),
   expiresAt: timestamp("expires_at", {
     withTimezone: true,
   }).notNull(),

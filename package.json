@@ -8,7 +8,8 @@
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
     "gen:keys": "bun dev/gen-cloud-keys.ts",
-    "dev:pair": "bun dev/create-pair-assertion.ts"
+    "dev:pair": "bun dev/create-pair-assertion.ts",
+    "dev:access": "bun dev/create-access-assertion.ts"
   },
   "dependencies": {
     "@hono/zod-validator": "^0.9.1",
