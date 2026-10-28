@@ -1,6 +1,6 @@
 import { Hono } from "hono"
 import { healthCheck } from "@/routes/health"
-import { coolifyWebhook } from "@/routes/webhooks/coolify"
+import { coolifyWebhook } from "@/webhooks/coolify"
 import { bridgeRoutes } from "@/routes/bridges"
 import { infoRoute } from "@/routes/info"
 import { eventRoutes } from "@/routes/events"
