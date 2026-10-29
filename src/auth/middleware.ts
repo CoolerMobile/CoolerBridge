@@ -26,12 +26,12 @@ export const requireAuth = createMiddleware<{ Variables: AuthVariables }>(async 
 
   // token & digest
   const token = authHeader.slice("Bearer ".length)
-  const tokenDigest = tokenDigest(token)
+  const digest = tokenDigest(token)
 
   // session
   const session = await db.query.sessions.findFirst({
     where: and(
-      eq(sessions.tokenDigest, tokenDigest),
+      eq(sessions.tokenDigest, digest),
       isNull(sessions.revokedAt),
       gt(sessions.expiresAt, new Date())
     ),

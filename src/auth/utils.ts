@@ -4,12 +4,9 @@ const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
  * generates a human-readable code matching `ABCD-ABCD`
  */
 export const generateCode = () => {
-  // random bytes
-  const bytes = crypto.getRandomValues(new Uint8Array(4))
-
   // section
   const section = () =>
-    Array.from(bytes, (byte) => {
+    Array.from(crypto.getRandomValues(new Uint8Array(4)), (byte) => {
       return ALPHABET[byte % ALPHABET.length]
     }).join("")
 
