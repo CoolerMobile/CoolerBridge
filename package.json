@@ -1,13 +1,16 @@
 {
   "name": "cooler-bridge",
   "type": "module",
-  "version": "0.1.0",
+  "version": "1.4.0",
   "scripts": {
     "dev": "NODE_ENV=development bun --watch src/index.ts",
+    "start": "bun src/index.ts",
+    "release": "gh workflow run release.yml",
     "test": "bun test",
     "test:watch": "bun test --watch",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
+    "db:push": "drizzle-kit push --force",
     "db:studio": "drizzle-kit studio",
     "gen:keys": "bun dev/gen-cloud-keys.ts",
     "dev:pair": "bun dev/create-pair-assertion.ts",
