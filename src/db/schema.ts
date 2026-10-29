@@ -1,3 +1,4 @@
+import { BridgeScope } from "@/services/scopes"
 import { boolean, jsonb, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core"
 
 // events & resources
@@ -81,7 +82,7 @@ export const sessions = pgTable("sessions", {
       onDelete: "cascade",
     }),
   tokenDigest: text("token_digest").notNull().unique(),
-  scopes: jsonb("scopes").$type<string[]>().notNull().default([]),
+  scopes: jsonb("scopes").$type<BridgeScope[]>().notNull().default([]),
   expiresAt: timestamp("expires_at", {
     withTimezone: true,
   }).notNull(),

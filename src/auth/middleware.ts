@@ -4,6 +4,7 @@ import { sessionTokenDigest } from "@/auth/utils"
 import { db } from "@/db"
 import { and, eq, gt, isNull } from "drizzle-orm"
 import { sessions } from "@/db/schema"
+import { BridgeScope, hasScope } from "@/services/scopes"
 
 /**
  * auth-gate for protected routes
@@ -56,7 +57,7 @@ export const requireAuth = createMiddleware<{ Variables: AuthVariables }>(async 
 /**
  * scope-gate for scope-specific routes
  */
-export const requireScope = (scope: string) => {
+export const requireScope = (scope: BridgeScope) => {
   return createMiddleware<{
     Variables: AuthVariables
   }>(async (context, next) => {
@@ -64,7 +65,7 @@ export const requireScope = (scope: string) => {
     const session = context.get("session")
 
     // validate included scopes
-    if (!session.scopes.includes(scope)) {
+    if (!hasScope(scope, session.scopes as BridgeScope[])) {
       return context.json(
         {
           error: "Forbidden",

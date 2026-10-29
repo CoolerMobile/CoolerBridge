@@ -38,28 +38,39 @@ authRoutes.get("/me", requireAuth, async (context) => {
 })
 
 authRoutes.post("/logout", requireAuth, async (context) => {
-  // current session
   const session = context.get("session")
 
-  // validate session
-  if (!session) {
-    return context.json(
-      {
-        error: "Not signed in",
-      },
-      401
-    )
-  }
-
-  // logout
   try {
-    session.revokedAt = new Date()
-    await db.update(sessions).set(session).where(eq(sessions.id, session.id)).returning({
-      id: sessions.id,
-      revokedAt: sessions.revokedAt,
+    // set revokedAt to current time
+    // effectively revoking current session
+    const [revoked] = await db
+      .update(sessions)
+      .set({
+        revokedAt: new Date(),
+      })
+      .where(and(eq(sessions.id, session.id), isNull(sessions.revokedAt)))
+      .returning({
+        id: sessions.id,
+        revokedAt: sessions.revokedAt,
+      })
+
+    // validate revoke operation
+    if (!revoked) {
+      return context.json(
+        {
+          error: "Session already revoked",
+        },
+        401
+      )
+    }
+
+    // return success
+    return context.json({
+      loggedOut: true,
     })
   } catch (error) {
     console.error("Failed to logout:", error)
+
     return context.json(
       {
         error: "Failed to logout",
