@@ -15,8 +15,7 @@ export type CoolerEvent = {
 }
 
 /**
- * normalizes coolify event payloads into
- * cooler-native events
+ * normalizes coolify event payloads into cooler-native events
  */
 export const normalizeEvent = (payload: CoolifyWebhook): CoolerEvent => {
   switch (payload.event) {
