@@ -83,13 +83,16 @@ The bridge is now available on port `3000`. The database schema is applied autom
 
 All configuration is provided through environment variables.
 
-| Variable           | Required          | Description                                                                                     |
-| ------------------ | ----------------- | ----------------------------------------------------------------------------------------------- |
-| `NODE_ENV`         | yes               | `production` reads the cloud key from `CLOUD_PUBLIC_KEY`; `development` reads it from `dev/keys`. |
-| `DATABASE_URL`     | yes               | PostgreSQL connection string used by the app and by `drizzle-kit`.                               |
-| `CLOUD_PUBLIC_KEY` | yes in production | Cooler cloud public key (Ed25519 SPKI, PEM). On a single line, with `\n` for newlines.          |
-| `PAIRING_PEPPER`   | yes               | Secret pepper mixed into pairing code digests. Generate with `openssl rand -base64 32`.          |
-| `PORT`             | no                | Port the bridge listens on. Defaults to `3000`.                                                 |
+| Variable            | Required          | Description                                                                                       |
+| ------------------- | ----------------- | ------------------------------------------------------------------------------------------------- |
+| `NODE_ENV`          | yes               | `production` reads the cloud key from `CLOUD_PUBLIC_KEY`; `development` reads it from `dev/keys`.  |
+| `POSTGRES_DB`       | no                | Database name for the bundled Postgres. Defaults to `coolerbridge`.                                |
+| `POSTGRES_USER`     | no                | Database user for the bundled Postgres. Defaults to `coolerbridge`.                                |
+| `POSTGRES_PASSWORD` | yes               | Database password. Set a strong, unique value. Generate with `openssl rand -base64 24`.           |
+| `DATABASE_URL`      | yes               | PostgreSQL connection string. In Compose it is derived from the `POSTGRES_*` values above.         |
+| `CLOUD_PUBLIC_KEY`  | yes in production | Cooler cloud public key (Ed25519 SPKI, PEM). On a single line, with `\n` for newlines.            |
+| `PAIRING_PEPPER`    | yes               | Secret pepper mixed into pairing code digests. Generate with `openssl rand -base64 32`.            |
+| `PORT`              | no                | Port the bridge listens on. Defaults to `3000`.                                                   |
 
 The API version is static (`v1`) and is **not** tied to the bridge's release version. It only changes when the public API itself does.
 

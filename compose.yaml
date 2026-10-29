@@ -4,6 +4,9 @@ services:
     restart: unless-stopped
     env_file:
       - .env
+    environment:
+      # derived from the postgres credentials so the password lives in one place
+      DATABASE_URL: postgres://${POSTGRES_USER:-coolerbridge}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-coolerbridge}
     ports:
       - "3000:3000"
     depends_on:
@@ -14,13 +17,13 @@ services:
     image: postgres:18-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_DB: coolerbridge
-      POSTGRES_USER: coolerbridge
-      POSTGRES_PASSWORD: coolerbridge
+      POSTGRES_DB: ${POSTGRES_DB:-coolerbridge}
+      POSTGRES_USER: ${POSTGRES_USER:-coolerbridge}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
     volumes:
       - coolerbridge-postgres:/var/lib/postgresql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U coolerbridge -d coolerbridge"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-coolerbridge} -d ${POSTGRES_DB:-coolerbridge}"]
       interval: 5s
       timeout: 5s
       retries: 5
