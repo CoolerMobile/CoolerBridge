@@ -63,7 +63,7 @@ export const pairingChallenges = pgTable("pairing_challenges", {
 export const cloudLinks = pgTable("cloud_links", {
   id: uuid("id").primaryKey().defaultRandom(),
   cloudUserId: text("cloud_user_id").notNull(),
-  cloudBridgeId: text("cloud_bridge_id").notNull().unique(),
+  bridgeId: text("bridge_id").notNull().unique(),
   createdAt: timestamp("created_at", {
     withTimezone: true,
   })
@@ -106,15 +106,15 @@ export const sessions = pgTable("sessions", {
 })
 
 // devices table
-export const devices = pgTable("sessions", {
+export const devices = pgTable("devices", {
   id: uuid("id").primaryKey().defaultRandom(),
   cloudLinkId: uuid("cloud_link_id")
     .notNull()
     .references(() => cloudLinks.id, {
       onDelete: "cascade",
     }),
-  platform: text().$type<OperatingSystem>(),
-  pushProvider: text().$type<PushProvider>(),
+  platform: text().$type<OperatingSystem>().notNull(),
+  pushProvider: text().$type<PushProvider>().notNull(),
   pushToken: text().notNull().unique(),
   createdAt: timestamp("created_at", {
     withTimezone: true,

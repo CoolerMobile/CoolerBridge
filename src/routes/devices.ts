@@ -11,8 +11,8 @@ export const deviceRoutes = new Hono()
 // device schema
 const deviceSchema = z.object({
   deviceData: z.object({
-    platform: z.enum(["ios", "android"]).optional(),
-    pushProvider: z.enum(["apns", "fcm"]).optional(),
+    platform: z.enum(["ios", "android"]),
+    pushProvider: z.enum(["apns", "fcm"]),
     pushToken: z.string().min(1),
   }),
 })

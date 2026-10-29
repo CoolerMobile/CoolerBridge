@@ -15,7 +15,7 @@ eventRoutes.get("/", requireAuth, requireScopes(["events:read"]), async (context
   const eventList = await db
     .select()
     .from(events)
-    .where(eq(events.bridgeId, cloudLink.cloudBridgeId))
+    .where(eq(events.bridgeId, cloudLink.bridgeId))
     .orderBy(desc(events.createdAt))
 
   // return json-encoded event list
@@ -30,7 +30,7 @@ eventRoutes.get("/:id", requireAuth, requireScopes(["events:read"]), async (cont
 
   // event
   const event = await db.query.events.findFirst({
-    where: and(eq(events.id, id), eq(events.bridgeId, cloudLink.cloudBridgeId)),
+    where: and(eq(events.id, id), eq(events.bridgeId, cloudLink.bridgeId)),
   })
 
   // validate event

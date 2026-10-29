@@ -103,7 +103,7 @@ pairingRoutes.post("/complete", zValidator("json", completePairingSchema), async
       .insert(cloudLinks)
       .values({
         cloudUserId: cloud.cloudUserId,
-        cloudBridgeId: cloud.cloudBridgeId,
+        bridgeId: cloud.cloudBridgeId,
       })
       .returning()
 
@@ -133,7 +133,7 @@ pairingRoutes.post("/complete", zValidator("json", completePairingSchema), async
   return context.json(
     {
       linked: true,
-      cloudBridgeId: link.cloudBridgeId,
+      cloudBridgeId: link.bridgeId,
     },
     200
   )

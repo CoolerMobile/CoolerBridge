@@ -104,7 +104,7 @@ authRoutes.post("/exchange", zValidator("json", exchangeSchema), async (context)
   const link = await db.query.cloudLinks.findFirst({
     where: and(
       eq(cloudLinks.cloudUserId, cloud.cloudUserId),
-      eq(cloudLinks.cloudBridgeId, cloud.cloudBridgeId),
+      eq(cloudLinks.bridgeId, cloud.cloudBridgeId),
       isNull(cloudLinks.revokedAt)
     ),
   })
@@ -133,7 +133,7 @@ authRoutes.post("/exchange", zValidator("json", exchangeSchema), async (context)
       cloudLinkId: link.id,
       tokenDigest: digest,
       scopes,
-      bridgeId: link.cloudBridgeId,
+      bridgeId: link.bridgeId,
       expiresAt,
     })
     .returning({
