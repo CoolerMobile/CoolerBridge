@@ -6,12 +6,67 @@ import { db } from "@/db"
 import { and, eq, isNull } from "drizzle-orm"
 import { cloudLinks, sessions } from "@/db/schema"
 import { generateSessionToken, sessionTokenDigest } from "@/auth/utils"
+import { requireAuth } from "@/auth/middleware"
 
 export const authRoutes = new Hono()
 
 // exchange schema
 const exchangeSchema = z.object({
   assertion: z.string().min(1),
+})
+
+authRoutes.get("/me", requireAuth, async (context) => {
+  // current session
+  const session = context.get("session")
+
+  // validate session
+  if (!session) {
+    return context.json(
+      {
+        error: "Not signed in",
+      },
+      401
+    )
+  }
+
+  // return session data
+  return context.json({
+    sessionId: session.id,
+    scopes: session.scopes,
+    expiresAt: session.expiresAt,
+  })
+})
+
+authRoutes.post("/logout", requireAuth, async (context) => {
+  // current session
+  const session = context.get("session")
+
+  // validate session
+  if (!session) {
+    return context.json(
+      {
+        error: "Not signed in",
+      },
+      401
+    )
+  }
+
+  // logout
+  try {
+    session.revokedAt = new Date()
+    await db.update(sessions).set(session).where(eq(sessions.id, session.id)).returning({
+      id: sessions.id,
+      revokedAt: sessions.revokedAt,
+    })
+  } catch (error) {
+    console.error("Failed to logout:", error)
+    return context.json(
+      {
+        error: "Failed to logout",
+      },
+      500
+    )
+  }
 })
 
 authRoutes.post("/exchange", zValidator("json", exchangeSchema), async (context) => {
