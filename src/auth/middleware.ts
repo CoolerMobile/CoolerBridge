@@ -82,7 +82,8 @@ export const requireScopes = (scopes: BridgeScope[]) => {
     const session = context.get("session")
 
     // validate included scopes
-    scopes.map((scope) => {
+    // bail out on the first missing scope
+    for (const scope of scopes) {
       if (!hasScope(scope, session.scopes as BridgeScope[])) {
         return context.json(
           {
@@ -91,7 +92,7 @@ export const requireScopes = (scopes: BridgeScope[]) => {
           403
         )
       }
-    })
+    }
 
     // proceed
     await next()
