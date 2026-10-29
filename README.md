@@ -63,15 +63,24 @@ CoolerBridge ships as a container image published to the GitHub Container Regist
 
 ### Run with Compose
 
-1. Copy the example files and fill in your values:
+1. Copy the example env file:
 
    ```bash
    cp .env.example .env
    ```
 
-2. Edit `.env` (see [Configuration](#configuration) below). At a minimum, set `CLOUD_PUBLIC_KEY` and a strong `PAIRING_PEPPER`.
+2. Generate strong secrets for the database password and the pairing pepper:
 
-3. Start the stack:
+   ```bash
+   echo "POSTGRES_PASSWORD=$(openssl rand -base64 24)"
+   echo "PAIRING_PEPPER=$(openssl rand -base64 32)"
+   ```
+
+   Paste the output into your `.env`, replacing the `change-me` placeholders.
+
+3. Edit `.env` (see [Configuration](#configuration) below). Besides the secrets above, set `CLOUD_PUBLIC_KEY`.
+
+4. Start the stack:
 
    ```bash
    docker compose up -d
