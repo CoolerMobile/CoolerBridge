@@ -1,0 +1,11 @@
+.git
+node_modules
+tests
+dev/keys
+*.log
+.env
+.env.*
+!.env.example
+.DS_Store
+README.md
+LICENSE
