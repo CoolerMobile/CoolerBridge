@@ -6,6 +6,7 @@ import { infoRoute } from "@/routes/info"
 import { eventRoutes } from "@/routes/events"
 import { pairingRoutes } from "@/routes/pair"
 import { authRoutes } from "@/routes/auth"
+import { deviceRoutes } from "@/routes/devices"
 
 const app = new Hono()
 
@@ -30,6 +31,7 @@ app.route("/v1/pairing", pairingRoutes)
 
 // data
 app.route("/v1/events", eventRoutes)
+app.route("/v1/devices", deviceRoutes)
 
 // export api
 export default app

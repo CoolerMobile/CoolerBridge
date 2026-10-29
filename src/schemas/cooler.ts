@@ -1,3 +1,7 @@
+export type OperatingSystem = "ios" | "android"
+
+export type PushProvider = "apns" | "fcm"
+
 export type Bridge = {
   id: string
   secret: string
@@ -8,9 +12,9 @@ export type Bridge = {
 
 export type Device = {
   id: string
-  bridgeId: string
-  tokenHash: string
-  platform: "ios" | "android"
+  cloudLinkId: string
+  platform: OperatingSystem
+  pushProvider?: PushProvider
   pushToken?: string
   createdAt: Date
   lastSeenAt: Date

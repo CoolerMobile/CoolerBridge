@@ -5,7 +5,7 @@ import { verifyCloudAssertion } from "@/auth/cloud"
 import { db } from "@/db"
 import { and, eq, isNull } from "drizzle-orm"
 import { cloudLinks, sessions } from "@/db/schema"
-import { generateSessionToken, sessionTokenDigest } from "@/auth/utils"
+import { generateSessionToken, tokenDigest } from "@/auth/utils"
 import { requireAuth } from "@/auth/middleware"
 import { isBridgeScope } from "@/services/scopes"
 
@@ -122,7 +122,7 @@ authRoutes.post("/exchange", zValidator("json", exchangeSchema), async (context)
   // generate session data
   // expires in 1 hour
   const token = generateSessionToken()
-  const tokenDigest = sessionTokenDigest(token)
+  const digest = tokenDigest(token)
   const expiresAt = new Date(Date.now() + 60 * 60 * 1000)
   const scopes = cloud.scope.filter(isBridgeScope)
 
@@ -131,7 +131,7 @@ authRoutes.post("/exchange", zValidator("json", exchangeSchema), async (context)
     .insert(sessions)
     .values({
       cloudLinkId: link.id,
-      tokenDigest,
+      tokenDigest: digest,
       scopes,
       bridgeId: link.cloudBridgeId,
       expiresAt,

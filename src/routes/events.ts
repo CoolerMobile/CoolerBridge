@@ -2,16 +2,16 @@ import { and, desc, eq } from "drizzle-orm"
 import { Hono } from "hono"
 import { db } from "@/db"
 import { events } from "@/db/schema"
-import { requireAuth, requireScope } from "@/auth/middleware"
+import { requireAuth, requireScopes } from "@/auth/middleware"
 
 export const eventRoutes = new Hono()
 
 // get all events for authenticated user's bridge
-eventRoutes.get("/", requireAuth, requireScope("events:read"), async (context) => {
+eventRoutes.get("/", requireAuth, requireScopes(["events:read"]), async (context) => {
   // cloud link
   const cloudLink = context.get("cloudLink")
 
-  // bridge-link based events
+  // cloud-link based events
   const eventList = await db
     .select()
     .from(events)
@@ -23,7 +23,7 @@ eventRoutes.get("/", requireAuth, requireScope("events:read"), async (context) =
 })
 
 // get event data by id
-eventRoutes.get("/:id", requireAuth, requireScope("events:read"), async (context) => {
+eventRoutes.get("/:id", requireAuth, requireScopes(["events:read"]), async (context) => {
   // cloud link & event id
   const cloudLink = context.get("cloudLink")
   const id = context.req.param("id")

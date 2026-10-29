@@ -53,11 +53,11 @@ export const generateSessionToken = () => {
 }
 
 /**
- * calculates a session token's digest
+ * calculates a token's digest
  *
  * @param token token to calculate digest for
  * @returns token digest encoded as `hex`
  */
-export const sessionTokenDigest = (token: string) => {
+export const tokenDigest = (token: string) => {
   return new Bun.CryptoHasher("sha256").update(token).digest("hex")
 }

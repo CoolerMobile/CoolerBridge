@@ -1,6 +1,6 @@
 import { AuthVariables } from "@/schemas/bridge"
 import { createMiddleware } from "hono/factory"
-import { sessionTokenDigest } from "@/auth/utils"
+import { tokenDigest } from "@/auth/utils"
 import { db } from "@/db"
 import { and, eq, gt, isNull } from "drizzle-orm"
 import { cloudLinks, sessions } from "@/db/schema"
@@ -26,7 +26,7 @@ export const requireAuth = createMiddleware<{ Variables: AuthVariables }>(async 
 
   // token & digest
   const token = authHeader.slice("Bearer ".length)
-  const tokenDigest = sessionTokenDigest(token)
+  const tokenDigest = tokenDigest(token)
 
   // session
   const session = await db.query.sessions.findFirst({
@@ -74,7 +74,7 @@ export const requireAuth = createMiddleware<{ Variables: AuthVariables }>(async 
 /**
  * scope-gate for scope-specific routes
  */
-export const requireScope = (scope: BridgeScope) => {
+export const requireScopes = (scopes: BridgeScope[]) => {
   return createMiddleware<{
     Variables: AuthVariables
   }>(async (context, next) => {
@@ -82,14 +82,16 @@ export const requireScope = (scope: BridgeScope) => {
     const session = context.get("session")
 
     // validate included scopes
-    if (!hasScope(scope, session.scopes as BridgeScope[])) {
-      return context.json(
-        {
-          error: "Forbidden",
-        },
-        403
-      )
-    }
+    scopes.map((scope) => {
+      if (!hasScope(scope, session.scopes as BridgeScope[])) {
+        return context.json(
+          {
+            error: "Forbidden",
+          },
+          403
+        )
+      }
+    })
 
     // proceed
     await next()

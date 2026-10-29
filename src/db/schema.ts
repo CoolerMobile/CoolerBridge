@@ -1,3 +1,4 @@
+import { OperatingSystem, PushProvider } from "@/schemas/cooler"
 import { BridgeScope } from "@/services/scopes"
 import { boolean, jsonb, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core"
 
@@ -97,6 +98,30 @@ export const sessions = pgTable("sessions", {
     .notNull()
     .defaultNow(),
   lastUsedAt: timestamp("last_used_at", {
+    withTimezone: true,
+  }),
+  revokedAt: timestamp("revoked_at", {
+    withTimezone: true,
+  }),
+})
+
+// devices table
+export const devices = pgTable("sessions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  cloudLinkId: uuid("cloud_link_id")
+    .notNull()
+    .references(() => cloudLinks.id, {
+      onDelete: "cascade",
+    }),
+  platform: text().$type<OperatingSystem>(),
+  pushProvider: text().$type<PushProvider>(),
+  pushToken: text().notNull().unique(),
+  createdAt: timestamp("created_at", {
+    withTimezone: true,
+  })
+    .notNull()
+    .defaultNow(),
+  lastSeenAt: timestamp("last_seen_at", {
     withTimezone: true,
   }),
   revokedAt: timestamp("revoked_at", {
