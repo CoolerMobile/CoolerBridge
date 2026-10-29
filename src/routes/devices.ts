@@ -107,8 +107,11 @@ deviceRoutes.delete(
       })
 
     // validate deletion
+    //
+    // no row removed means the id is unknown
+    // or the device belongs to another link
     if (!deleted) {
-      return context.json({ error: "Failed to remove device" }, 500)
+      return context.json({ error: "Device not found" }, 404)
     }
 
     // return success

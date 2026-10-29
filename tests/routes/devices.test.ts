@@ -140,7 +140,7 @@ describe("DELETE /v1/devices/:id", () => {
     })
 
     // nothing deleted for this link
-    expect(res.status).toBe(500)
+    expect(res.status).toBe(404)
 
     const rows = await db.select().from(devices).where(eq(devices.id, device.id))
     expect(rows).toHaveLength(1)
