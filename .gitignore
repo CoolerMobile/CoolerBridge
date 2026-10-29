@@ -4,6 +4,9 @@ drizzle
 # dev extras
 dev/keys
 
+# release artifacts
+RELEASE_NOTES.md
+
 # apple bs
 .DS_Store
 
