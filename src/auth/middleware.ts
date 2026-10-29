@@ -3,7 +3,7 @@ import { createMiddleware } from "hono/factory"
 import { sessionTokenDigest } from "@/auth/utils"
 import { db } from "@/db"
 import { and, eq, gt, isNull } from "drizzle-orm"
-import { sessions } from "@/db/schema"
+import { cloudLinks, sessions } from "@/db/schema"
 import { BridgeScope, hasScope } from "@/services/scopes"
 
 /**
@@ -47,8 +47,25 @@ export const requireAuth = createMiddleware<{ Variables: AuthVariables }>(async 
     )
   }
 
-  // set session for current context
+  // cloud link
+  const cloudLink = await db.query.cloudLinks.findFirst({
+    where: eq(cloudLinks.id, session.cloudLinkId),
+  })
+
+  // validate cloud link
+  // checks if a link exists and if it hasn't been revoked
+  if (!cloudLink || cloudLink.revokedAt) {
+    return context.json(
+      {
+        error: "Unauthorized",
+      },
+      401
+    )
+  }
+
+  // set session & cloud link for current context
   context.set("session", session)
+  context.set("cloudLink", cloudLink)
 
   // proceed
   await next()
