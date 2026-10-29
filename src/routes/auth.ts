@@ -7,6 +7,7 @@ import { and, eq, isNull } from "drizzle-orm"
 import { cloudLinks, sessions } from "@/db/schema"
 import { generateSessionToken, sessionTokenDigest } from "@/auth/utils"
 import { requireAuth } from "@/auth/middleware"
+import { isBridgeScope } from "@/services/scopes"
 
 export const authRoutes = new Hono()
 
@@ -123,6 +124,7 @@ authRoutes.post("/exchange", zValidator("json", exchangeSchema), async (context)
   const token = generateSessionToken()
   const tokenDigest = sessionTokenDigest(token)
   const expiresAt = new Date(Date.now() + 60 * 60 * 1000)
+  const scopes = cloud.scope.filter(isBridgeScope)
 
   // create session
   const [session] = await db
@@ -130,7 +132,8 @@ authRoutes.post("/exchange", zValidator("json", exchangeSchema), async (context)
     .values({
       cloudLinkId: link.id,
       tokenDigest,
-      scopes: cloud.scope,
+      scopes,
+      bridgeId: link.cloudBridgeId,
       expiresAt,
     })
     .returning({
@@ -153,6 +156,6 @@ authRoutes.post("/exchange", zValidator("json", exchangeSchema), async (context)
     accessToken: token,
     tokenType: "Bearer",
     expiresAt: session.expiresAt,
-    scopes: cloud.scope,
+    scopes,
   })
 })

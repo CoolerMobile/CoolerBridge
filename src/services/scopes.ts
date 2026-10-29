@@ -10,6 +10,19 @@ export type BridgeScope =
   | "coolify:write"
   | "coolify:deploy"
 
+const bridgeScopes: ReadonlySet<string> = new Set<BridgeScope>([
+  "events:read",
+  "devices:read",
+  "devices:write",
+  "session:revoke",
+  "coolify:read",
+  "coolify:read:sensitive",
+  "coolify:write",
+  "coolify:deploy",
+])
+
+export const isBridgeScope = (scope: string): scope is BridgeScope => bridgeScopes.has(scope)
+
 /**
  * scope implications in tree-format
  */

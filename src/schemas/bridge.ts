@@ -1,5 +1,5 @@
 import z from "zod"
-import { sessions } from "@/db/schema"
+import { cloudLinks, sessions } from "@/db/schema"
 
 export const completePairingSchema = z.object({
   code: z.string(),
@@ -8,4 +8,5 @@ export const completePairingSchema = z.object({
 
 export type AuthVariables = {
   session: typeof sessions.$inferSelect
+  cloudLink: typeof cloudLinks.$inferSelect
 }

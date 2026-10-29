@@ -83,6 +83,11 @@ export const sessions = pgTable("sessions", {
     }),
   tokenDigest: text("token_digest").notNull().unique(),
   scopes: jsonb("scopes").$type<BridgeScope[]>().notNull().default([]),
+  bridgeId: uuid("bridge_id")
+    .notNull()
+    .references(() => bridges.id, {
+      onDelete: "cascade",
+    }),
   expiresAt: timestamp("expires_at", {
     withTimezone: true,
   }).notNull(),
