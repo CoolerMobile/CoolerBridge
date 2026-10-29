@@ -11,9 +11,8 @@ export const pairingRoutes = new Hono()
 
 // create pairing challenge
 pairingRoutes.post("/", async (context) => {
-  // code & hash
+  // pairing code
   const code = generateCode()
-  const codeHash = await Bun.password.hash(code)
 
   // expiry - 10 minutes
   const expiresAt = new Date(Date.now() + 10 * 60 * 1000)
