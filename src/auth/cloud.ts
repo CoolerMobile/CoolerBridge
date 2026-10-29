@@ -7,9 +7,12 @@ const alg = "Ed25519"
 // public key - env in prod and file in dev
 let pubKey
 switch (Bun.env.NODE_ENV) {
-  case "production":
-    pubKey = await importSPKI(Bun.env.CLOUD_PUBLIC_KEY!, alg)
+  case "production": {
+    // env files carry the pem on a single line, so restore the newlines before parsing
+    const pem = Bun.env.CLOUD_PUBLIC_KEY!.replace(/\\n/g, "\n")
+    pubKey = await importSPKI(pem, alg)
     break
+  }
 
   case "development": {
     const pem = await Bun.file(new URL("../../dev/keys/cooler-public.pem", import.meta.url)).text()
