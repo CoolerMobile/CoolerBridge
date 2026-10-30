@@ -5,14 +5,12 @@ import { Expo, type ExpoPushMessage, type ExpoPushTicket } from "expo-server-sdk
 /**
  * expo client
  *
- * EXPO_ACCESS_TOKEN is optional but recommended, it enables push security
- * so only authorized callers can send to your project's tokens
+ * the bridge only forwards events, the push project and its credentials live in
+ * Cooler so self-hosters never configure a provider here
  *
- * @see https://docs.expo.dev/push-notifications/sending-notifications/#additional-security
+ * @see https://docs.expo.dev/push-notifications/sending-notifications/
  */
-const expo = new Expo({
-  accessToken: Bun.env.EXPO_ACCESS_TOKEN,
-})
+const expo = new Expo()
 
 /**
  * builds an expo push message for a device
