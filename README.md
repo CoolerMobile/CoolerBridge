@@ -20,7 +20,7 @@ In short:
 
 1. Coolify sends a notification to your CoolerBridge webhook URL.
 2. CoolerBridge normalizes the payload and stores it as an event, scoped to the originating bridge.
-3. Linked devices are notified over push (APNs for iOS, FCM for Android).
+3. Linked devices are notified over push through [Expo](https://expo.dev), which fans out to APNs (iOS) and FCM (Android).
 4. Cooler reads the event through CoolerBridge's own API.
 
 ### Features
@@ -29,7 +29,7 @@ In short:
 - Per-bridge isolation so events never leak across instances.
 - Cloud pairing and token exchange backed by Ed25519 assertions.
 - Scoped sessions modeled on Coolify's own permission scopes.
-- Push dispatch to linked devices via APNs and FCM.
+- Push dispatch to linked devices through Expo, with automatic pruning of tokens Expo reports as unregistered.
 
 ### Security
 
@@ -101,9 +101,26 @@ All configuration is provided through environment variables.
 | `DATABASE_URL`      | yes               | PostgreSQL connection string. In Compose it is derived from the `POSTGRES_*` values above.         |
 | `CLOUD_PUBLIC_KEY`  | yes in production | Cooler cloud public key (Ed25519 SPKI, PEM). On a single line, with `\n` for newlines.            |
 | `PAIRING_PEPPER`    | yes               | Secret pepper mixed into pairing code digests. Generate with `openssl rand -base64 32`.            |
+| `EXPO_ACCESS_TOKEN` | no                | Expo access token. Enables push security so only authorized senders can reach your project's tokens. See [Push notifications](#push-notifications). |
 | `PORT`              | no                | Port the bridge listens on. Defaults to `3000`.                                                   |
 
 The API version is static (`v1`) and is **not** tied to the bridge's release version. It only changes when the public API itself does.
+
+### Push notifications
+
+CoolerBridge delivers push notifications entirely through [Expo](https://expo.dev). Expo is the single provider: it fans each event out to APNs (iOS) and FCM (Android) on your behalf, so you do not configure those providers on the bridge itself.
+
+The push credentials (APNs key, FCM key) live in your Cooler app's Expo project, not in CoolerBridge. On the bridge side you only set the optional `EXPO_ACCESS_TOKEN`, which enables Expo's push security so that only authorized senders can push to your project's tokens.
+
+To obtain `EXPO_ACCESS_TOKEN`:
+
+1. Sign in to the [Expo dashboard](https://expo.dev) with the account that owns the Cooler app's project.
+2. Open **Account settings** -> **Access tokens**.
+3. Create a new access token and copy it (it is shown only once).
+4. Set it as `EXPO_ACCESS_TOKEN` in your `.env`.
+5. In the Expo dashboard, enable **Enhanced Security for Push Notifications** under the project's push settings so tokens are rejected unless they carry a valid access token.
+
+Leaving `EXPO_ACCESS_TOKEN` unset is supported: Expo still delivers notifications, just without the extra sender authorization.
 
 ## Development
 
