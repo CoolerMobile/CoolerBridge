@@ -5,6 +5,7 @@ import { Hono } from "hono"
 import { coolifyWebhookSchema } from "@/schemas/coolify"
 import { zValidator } from "@hono/zod-validator"
 import { normalizeEvent } from "@/services/normalize"
+import { dispatchEvent } from "@/services/notifications/dispatch"
 
 export const coolifyWebhook = new Hono()
 
@@ -46,6 +47,21 @@ coolifyWebhook.post("/:secret", zValidator("json", coolifyWebhookSchema), async 
       metadata: normalized.metadata,
     })
     .returning()
+
+  // dispatch push notifications to linked active devices
+  await dispatchEvent({
+    id: event.id,
+    bridgeId: bridge.id,
+    type: normalized.type,
+    severity: normalized.severity,
+    title: normalized.title,
+    message: normalized.message,
+    resourceType: normalized.resource?.type,
+    resourceId: normalized.resource?.id,
+    resourceName: normalized.resource?.name,
+    metadata: normalized.metadata,
+    createdAt: event.createdAt,
+  })
 
   // return success
   return context.json(
