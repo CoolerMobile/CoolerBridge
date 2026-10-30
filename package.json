@@ -20,6 +20,7 @@
     "@hono/zod-validator": "^0.9.1",
     "drizzle-kit": "^0.31.11",
     "drizzle-orm": "^0.45.4",
+    "expo-server-sdk": "^8.0.0",
     "hono": "^4.13.14",
     "jose": "^6.2.14",
     "postgres": "^3.4.9",
