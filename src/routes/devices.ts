@@ -3,6 +3,7 @@ import { db } from "@/db"
 import { cloudLinks, devices } from "@/db/schema"
 import { zValidator } from "@hono/zod-validator"
 import { and, desc, eq } from "drizzle-orm"
+import { Expo } from "expo-server-sdk"
 import { Hono } from "hono"
 import z from "zod"
 
@@ -12,8 +13,7 @@ export const deviceRoutes = new Hono()
 const deviceSchema = z.object({
   deviceData: z.object({
     platform: z.enum(["ios", "android"]),
-    pushProvider: z.enum(["apns", "fcm"]),
-    pushToken: z.string().min(1),
+    pushToken: z.string().refine(Expo.isExpoPushToken, "invalid expo push token"),
   }),
 })
 

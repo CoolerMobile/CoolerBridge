@@ -1,22 +1,25 @@
 import { afterEach, beforeEach, describe, expect, spyOn, test } from "bun:test"
+import { eq } from "drizzle-orm"
+import { Expo } from "expo-server-sdk"
+import { db } from "@/db"
+import { devices } from "@/db/schema"
+import type { Device, Event } from "@/schemas/cooler"
 import { dispatchEvent } from "@/services/notifications/dispatch"
-import { sendApns } from "@/services/notifications/apns"
-import { sendFcm } from "@/services/notifications/fcm"
-import type { Event } from "@/schemas/cooler"
+import { expoPushProvider } from "@/services/notifications/expo"
 import { resetDb, seedAuthedSession, seedDevice } from "../helpers/db"
 
-// silence and observe the stub loggers
-let info: ReturnType<typeof spyOn>
+// stub expo's network call and observe the error logger
+let send: ReturnType<typeof spyOn>
 let error: ReturnType<typeof spyOn>
 
 beforeEach(async () => {
   await resetDb()
-  info = spyOn(console, "info").mockImplementation(() => {})
+  send = spyOn(Expo.prototype, "sendPushNotificationsAsync").mockResolvedValue([])
   error = spyOn(console, "error").mockImplementation(() => {})
 })
 
 afterEach(() => {
-  info.mockRestore()
+  send.mockRestore()
   error.mockRestore()
 })
 
@@ -33,17 +36,63 @@ const makeEvent = (bridgeId: string): Event => ({
   createdAt: new Date(),
 })
 
-describe("sendApns", () => {
-  test("resolves and logs the token and payload", async () => {
-    await expect(sendApns("tok-1", { type: "event.available", eventId: "e1" })).resolves.toBeUndefined()
-    expect(info).toHaveBeenCalledTimes(1)
-  })
+/**
+ * builds a minimal device
+ */
+const makeDevice = (overrides: Partial<Device> = {}): Device => ({
+  id: crypto.randomUUID(),
+  cloudLinkId: crypto.randomUUID(),
+  platform: "ios",
+  pushToken: `ExponentPushToken[${crypto.randomUUID()}]`,
+  createdAt: new Date(),
+  lastSeenAt: null,
+  ...overrides,
 })
 
-describe("sendFcm", () => {
-  test("resolves and logs the token and payload", async () => {
-    await expect(sendFcm("tok-1", { type: "event.available", eventId: "e1" })).resolves.toBeUndefined()
-    expect(info).toHaveBeenCalledTimes(1)
+describe("expoPushProvider.send", () => {
+  test("skips devices without a valid expo token", async () => {
+    const deliveries = await expoPushProvider.send(
+      [makeDevice({ pushToken: "not-an-expo-token" })],
+      makeEvent(crypto.randomUUID())
+    )
+
+    expect(deliveries).toHaveLength(0)
+    expect(send).not.toHaveBeenCalled()
+  })
+
+  test("maps a successful ticket to an ok delivery", async () => {
+    send.mockResolvedValue([{ status: "ok", id: "receipt-1" }])
+    const device = makeDevice()
+
+    const [delivery] = await expoPushProvider.send([device], makeEvent(crypto.randomUUID()))
+
+    expect(delivery).toEqual({ deviceId: device.id, status: "ok", ticketId: "receipt-1" })
+  })
+
+  test("maps an error ticket to an error delivery", async () => {
+    send.mockResolvedValue([{ status: "error", message: "boom" }])
+    const device = makeDevice()
+
+    const [delivery] = await expoPushProvider.send([device], makeEvent(crypto.randomUUID()))
+
+    expect(delivery).toEqual({ deviceId: device.id, status: "error", error: "boom" })
+  })
+
+  test("revokes a device expo no longer recognizes", async () => {
+    const { cloudLink } = await seedAuthedSession()
+    const device = await seedDevice(cloudLink.id)
+
+    send.mockResolvedValue([
+      { status: "error", message: "gone", details: { error: "DeviceNotRegistered" } },
+    ])
+
+    await expoPushProvider.send(
+      [makeDevice({ id: device.id, pushToken: device.pushToken })],
+      makeEvent(crypto.randomUUID())
+    )
+
+    const [row] = await db.select().from(devices).where(eq(devices.id, device.id))
+    expect(row?.revokedAt).toBeInstanceOf(Date)
   })
 })
 
@@ -53,40 +102,47 @@ describe("dispatchEvent", () => {
 
     await dispatchEvent(makeEvent(bridge.id))
 
-    expect(info).not.toHaveBeenCalled()
+    expect(send).not.toHaveBeenCalled()
     expect(error).not.toHaveBeenCalled()
   })
 
-  test("notifies an active apns device", async () => {
+  test("sends to an active device via expo", async () => {
     const { bridge, cloudLink } = await seedAuthedSession()
-    await seedDevice(cloudLink.id, { pushProvider: "apns" })
+    const device = await seedDevice(cloudLink.id)
+    send.mockResolvedValue([{ status: "ok", id: "receipt-1" }])
 
     await dispatchEvent(makeEvent(bridge.id))
 
-    expect(info).toHaveBeenCalledTimes(1)
-    const [label, data] = info.mock.calls[0] as [string, { payload: { type: string } }]
-    expect(label).toBe("APNS notification:")
-    expect(data.payload.type).toBe("event.available")
+    expect(send).toHaveBeenCalledTimes(1)
+    const [chunk] = send.mock.calls[0] as [{ to: string }[]]
+    expect(chunk[0].to).toBe(device.pushToken)
+    expect(error).not.toHaveBeenCalled()
   })
 
-  test("notifies an active fcm device", async () => {
+  test("sends to every active device for the bridge", async () => {
     const { bridge, cloudLink } = await seedAuthedSession()
-    await seedDevice(cloudLink.id, { pushProvider: "fcm" })
+    await seedDevice(cloudLink.id)
+    await seedDevice(cloudLink.id)
+    send.mockResolvedValue([
+      { status: "ok", id: "r1" },
+      { status: "ok", id: "r2" },
+    ])
 
     await dispatchEvent(makeEvent(bridge.id))
 
-    expect(info).toHaveBeenCalledTimes(1)
-    expect(info.mock.calls[0][0]).toBe("FCM notification:")
+    expect(send).toHaveBeenCalledTimes(1)
+    const [chunk] = send.mock.calls[0] as [unknown[]]
+    expect(chunk).toHaveLength(2)
   })
 
-  test("notifies every active device for the bridge", async () => {
+  test("logs a failed delivery", async () => {
     const { bridge, cloudLink } = await seedAuthedSession()
-    await seedDevice(cloudLink.id, { pushProvider: "apns", pushToken: "a" })
-    await seedDevice(cloudLink.id, { pushProvider: "fcm", pushToken: "b" })
+    await seedDevice(cloudLink.id)
+    send.mockResolvedValue([{ status: "error", message: "nope" }])
 
     await dispatchEvent(makeEvent(bridge.id))
 
-    expect(info).toHaveBeenCalledTimes(2)
+    expect(error).toHaveBeenCalledTimes(1)
   })
 
   test("skips revoked devices", async () => {
@@ -95,7 +151,7 @@ describe("dispatchEvent", () => {
 
     await dispatchEvent(makeEvent(bridge.id))
 
-    expect(info).not.toHaveBeenCalled()
+    expect(send).not.toHaveBeenCalled()
   })
 
   test("skips devices under a revoked cloud link", async () => {
@@ -103,14 +159,12 @@ describe("dispatchEvent", () => {
     await seedDevice(cloudLink.id)
 
     // revoke the link, then dispatch
-    const { db } = await import("@/db")
     const { cloudLinks } = await import("@/db/schema")
-    const { eq } = await import("drizzle-orm")
     await db.update(cloudLinks).set({ revokedAt: new Date() }).where(eq(cloudLinks.id, cloudLink.id))
 
     await dispatchEvent(makeEvent(bridge.id))
 
-    expect(info).not.toHaveBeenCalled()
+    expect(send).not.toHaveBeenCalled()
   })
 
   test("does not notify devices of a different bridge", async () => {
@@ -120,14 +174,6 @@ describe("dispatchEvent", () => {
 
     await dispatchEvent(makeEvent(mine.bridge.id))
 
-    expect(info).not.toHaveBeenCalled()
-  })
-
-  test("logs and swallows an unsupported provider without throwing", async () => {
-    const { bridge, cloudLink } = await seedAuthedSession()
-    await seedDevice(cloudLink.id, { pushProvider: "web" as never })
-
-    await expect(dispatchEvent(makeEvent(bridge.id))).resolves.toBeUndefined()
-    expect(error).toHaveBeenCalledTimes(1)
+    expect(send).not.toHaveBeenCalled()
   })
 })

@@ -160,11 +160,10 @@ describe("devices table", () => {
     const bridge = await seedBridge()
     const link = await seedCloudLink(bridge.id)
 
-    const device = await seedDevice(link.id, { platform: "android", pushProvider: "fcm" })
+    const device = await seedDevice(link.id, { platform: "android" })
 
     expect(device.cloudLinkId).toBe(link.id)
     expect(device.platform).toBe("android")
-    expect(device.pushProvider).toBe("fcm")
     expect(device.createdAt).toBeInstanceOf(Date)
   })
 

@@ -64,13 +64,13 @@ describe("POST /v1/devices", () => {
     const { cloudLink, token } = await seedAuthedSession(["devices:read", "devices:write"])
 
     const res = await app.request("/v1/devices", {
-      ...body({ platform: "ios", pushProvider: "apns", pushToken: "tok-1" }),
+      ...body({ platform: "ios", pushToken: "ExponentPushToken[tok-1]" }),
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
     })
 
     expect(res.status).toBe(201)
     const device = await res.json()
-    expect(device.pushToken).toBe("tok-1")
+    expect(device.pushToken).toBe("ExponentPushToken[tok-1]")
     expect(device.cloudLinkId).toBe(cloudLink.id)
 
     const [row] = await db.select().from(devices).where(eq(devices.id, device.id))
@@ -81,7 +81,18 @@ describe("POST /v1/devices", () => {
     const { token } = await seedAuthedSession(["devices:read", "devices:write"])
 
     const res = await app.request("/v1/devices", {
-      ...body({ platform: "windows", pushProvider: "apns", pushToken: "tok" }),
+      ...body({ platform: "windows", pushToken: "ExponentPushToken[tok]" }),
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    })
+
+    expect(res.status).toBe(400)
+  })
+
+  test("rejects a non-expo push token", async () => {
+    const { token } = await seedAuthedSession(["devices:read", "devices:write"])
+
+    const res = await app.request("/v1/devices", {
+      ...body({ platform: "ios", pushToken: "not-an-expo-token" }),
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
     })
 
@@ -92,7 +103,7 @@ describe("POST /v1/devices", () => {
     const { token } = await seedAuthedSession(["devices:read"])
 
     const res = await app.request("/v1/devices", {
-      ...body({ platform: "ios", pushProvider: "apns", pushToken: "tok-2" }),
+      ...body({ platform: "ios", pushToken: "ExponentPushToken[tok-2]" }),
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
     })
 
@@ -104,8 +115,7 @@ describe("POST /v1/devices", () => {
       "/v1/devices",
       body({
         platform: "ios",
-        pushProvider: "apns",
-        pushToken: "tok-3",
+        pushToken: "ExponentPushToken[tok-3]",
       })
     )
     expect(res.status).toBe(401)

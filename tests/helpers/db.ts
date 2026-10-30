@@ -2,7 +2,7 @@ import { sql } from "drizzle-orm"
 import { db } from "@/db"
 import { bridges, cloudLinks, devices, events, pairingChallenges, sessions } from "@/db/schema"
 import { generateSessionToken, tokenDigest } from "@/auth/utils"
-import type { OperatingSystem, PushProvider } from "@/schemas/cooler"
+import type { OperatingSystem } from "@/schemas/cooler"
 
 /**
  * adopts a drizzle query (a custom thenable) into a native promise
@@ -145,7 +145,6 @@ export const seedDevice = async (
   cloudLinkId: string,
   overrides: Partial<{
     platform: OperatingSystem
-    pushProvider: PushProvider
     pushToken: string
     revokedAt: Date | null
   }> = {}
@@ -155,8 +154,7 @@ export const seedDevice = async (
     .values({
       cloudLinkId,
       platform: overrides.platform ?? "ios",
-      pushProvider: overrides.pushProvider ?? "apns",
-      pushToken: overrides.pushToken ?? `tok_${crypto.randomUUID()}`,
+      pushToken: overrides.pushToken ?? `ExponentPushToken[${crypto.randomUUID()}]`,
       revokedAt: overrides.revokedAt ?? null,
     })
     .returning()

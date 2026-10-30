@@ -1,4 +1,4 @@
-import { OperatingSystem, PushProvider } from "@/schemas/cooler"
+import { OperatingSystem } from "@/schemas/cooler"
 import { BridgeScope } from "@/services/scopes"
 import { boolean, jsonb, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core"
 
@@ -114,7 +114,6 @@ export const devices = pgTable("devices", {
       onDelete: "cascade",
     }),
   platform: text().$type<OperatingSystem>().notNull(),
-  pushProvider: text().$type<PushProvider>().notNull(),
   pushToken: text().notNull().unique(),
   createdAt: timestamp("created_at", {
     withTimezone: true,
