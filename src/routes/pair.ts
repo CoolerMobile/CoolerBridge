@@ -9,6 +9,11 @@ import { codeDigest, generateCode } from "@/auth/utils"
 
 export const pairingRoutes = new Hono()
 
+// #region Create Pairing Challenge Route
+/**
+ * @docs Issues a short-lived pairing code and challenge for a device to begin
+ * linking.
+ */
 // create pairing challenge
 pairingRoutes.post("/", async (context) => {
   // pairing code
@@ -39,7 +44,13 @@ pairingRoutes.post("/", async (context) => {
     201
   )
 })
+// #endregion
 
+// #region Complete Pairing Route
+/**
+ * @docs Completes pairing by matching the code to an unused, unexpired
+ * challenge, verifying the cloud assertion, and creating the cloud link.
+ */
 // complete pairing
 pairingRoutes.post("/complete", zValidator("json", completePairingSchema), async (context) => {
   // extract code & assertion from request
@@ -137,3 +148,4 @@ pairingRoutes.post("/complete", zValidator("json", completePairingSchema), async
     200
   )
 })
+// #endregion

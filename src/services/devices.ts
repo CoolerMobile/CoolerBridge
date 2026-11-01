@@ -3,12 +3,16 @@ import { cloudLinks, devices } from "@/db/schema"
 import { Event } from "@/schemas/cooler"
 import { and, eq, inArray, isNull } from "drizzle-orm"
 
+// #region Active Devices
 /**
  * get current user's active devices
  *
  * @param event cooler event
  *
  * @returns active device list
+ *
+ * @docs Returns the active, non-revoked devices linked to the bridge that owns
+ * a given event.
  */
 export const activeDevices = async (event: Event) => {
   return await db
@@ -26,13 +30,18 @@ export const activeDevices = async (event: Event) => {
       and(eq(cloudLinks.bridgeId, event.bridgeId), isNull(cloudLinks.revokedAt), isNull(devices.revokedAt))
     )
 }
+// #endregion
 
+// #region Revoke Devices
 /**
  * revoke devices by id
  *
  * used to prune tokens expo no longer recognizes
  *
  * @param deviceIds device ids to revoke
+ *
+ * @docs Revokes the given devices by id, used to prune push tokens Expo no
+ * longer recognizes.
  */
 export const revokeDevices = async (deviceIds: string[]) => {
   if (deviceIds.length === 0) return
@@ -42,3 +51,4 @@ export const revokeDevices = async (deviceIds: string[]) => {
     .set({ revokedAt: new Date() })
     .where(and(inArray(devices.id, deviceIds), isNull(devices.revokedAt)))
 }
+// #endregion

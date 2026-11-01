@@ -9,6 +9,11 @@ import z from "zod"
 
 export const deviceRoutes = new Hono()
 
+// #region Device Schema
+/**
+ * @docs Request body for registering a device, validating its platform and a
+ * genuine Expo push token.
+ */
 // device schema
 const deviceSchema = z.object({
   deviceData: z.object({
@@ -16,7 +21,13 @@ const deviceSchema = z.object({
     pushToken: z.string().refine(Expo.isExpoPushToken, "invalid expo push token"),
   }),
 })
+// #endregion
 
+// #region List Devices Route
+/**
+ * @docs Returns the authenticated account's devices, newest first, for callers
+ * holding the devices:read scope.
+ */
 // get user's devices
 deviceRoutes.get("/", requireAuth, requireScopes(["devices:read"]), async (context) => {
   // cloud link
@@ -42,7 +53,13 @@ deviceRoutes.get("/", requireAuth, requireScopes(["devices:read"]), async (conte
   // return json-encoded device list
   return context.json(deviceList)
 })
+// #endregion
 
+// #region Create Device Route
+/**
+ * @docs Registers a new device under the authenticated account's cloud link,
+ * requiring the devices:write scope.
+ */
 // create device
 deviceRoutes.post(
   "/",
@@ -77,7 +94,13 @@ deviceRoutes.post(
     return context.json(device, 201)
   }
 )
+// #endregion
 
+// #region Delete Device Route
+/**
+ * @docs Removes a device owned by the authenticated account by id, requiring
+ * the devices:write scope.
+ */
 // delete device by id
 deviceRoutes.delete(
   "/:id",
@@ -121,3 +144,4 @@ deviceRoutes.delete(
     })
   }
 )
+// #endregion

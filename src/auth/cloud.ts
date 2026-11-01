@@ -1,6 +1,11 @@
 import { importSPKI, jwtVerify } from "jose"
 import { CloudPairingAssertion } from "@/auth/assert"
 
+// #region Cloud Public Key
+/**
+ * @docs Loads the Cooler cloud Ed25519 public key, from the environment in
+ * production and from dev keys in development, exiting if none is present.
+ */
 // encryption algorithm
 const alg = "Ed25519"
 
@@ -29,11 +34,16 @@ if (!pubKey) {
   console.error('No public key. Did you run "bun gen:keys"?')
   process.exit(1)
 }
+// #endregion
 
+// #region Verify Pair Assertion
 /**
  * verifies pairing `assertion` against valid public key
  *
  * @param assertion assertion to verify
+ *
+ * @docs Verifies a pairing assertion against the cloud public key and returns
+ * its normalized claims.
  */
 export const verifyPairAssertion = async (assertion: string): Promise<CloudPairingAssertion> => {
   // extract & validate payload
@@ -59,11 +69,16 @@ export const verifyPairAssertion = async (assertion: string): Promise<CloudPairi
     pairingId: payload.pairingId,
   }
 }
+// #endregion
 
+// #region Verify Cloud Assertion
 /**
  * verifies cloud access assertion against valid public key
  *
  * @param assertion assertion to verify
+ *
+ * @docs Verifies a cloud access assertion against the cloud public key and
+ * returns its normalized claims and scopes.
  */
 export const verifyCloudAssertion = async (assertion: string) => {
   // payload
@@ -90,3 +105,4 @@ export const verifyCloudAssertion = async (assertion: string) => {
     scope,
   }
 }
+// #endregion

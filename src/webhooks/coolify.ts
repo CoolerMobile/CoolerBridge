@@ -9,6 +9,12 @@ import { dispatchEvent } from "@/services/notifications/dispatch"
 
 export const coolifyWebhook = new Hono()
 
+// #region Coolify Webhook Handler
+/**
+ * @docs Receives a Coolify notification at a secret-scoped URL, resolves the
+ * owning bridge, normalizes and stores the event, and dispatches push
+ * notifications to linked devices.
+ */
 coolifyWebhook.post("/:secret", zValidator("json", coolifyWebhookSchema), async (context) => {
   // secret
   const payload = context.req.valid("json")
@@ -72,3 +78,4 @@ coolifyWebhook.post("/:secret", zValidator("json", coolifyWebhookSchema), async 
     202
   )
 })
+// #endregion

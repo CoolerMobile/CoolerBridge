@@ -1,5 +1,10 @@
 import { CoolifyWebhook } from "@/schemas/coolify"
 
+// #region Cooler Event Type
+/**
+ * @docs The normalized, Cooler-native shape an event takes once a Coolify
+ * payload is translated.
+ */
 export type CoolerEvent = {
   type: string
   severity: "info" | "success" | "warning" | "error"
@@ -13,9 +18,14 @@ export type CoolerEvent = {
   }
   metadata?: Record<string, unknown>
 }
+// #endregion
 
+// #region Normalize Event
 /**
  * normalizes coolify event payloads into cooler-native events
+ *
+ * @docs Translates a Coolify webhook payload into a normalized Cooler event,
+ * mapping known event types and falling back to a raw passthrough.
  */
 export const normalizeEvent = (payload: CoolifyWebhook): CoolerEvent => {
   switch (payload.event) {
@@ -63,3 +73,4 @@ export const normalizeEvent = (payload: CoolifyWebhook): CoolerEvent => {
       }
   }
 }
+// #endregion

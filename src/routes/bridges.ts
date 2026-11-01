@@ -5,6 +5,11 @@ import { genSecret } from "@/services/secrets"
 
 export const bridgeRoutes = new Hono()
 
+// #region Create Bridge Route
+/**
+ * @docs Creates a new bridge with a cryptographically random secret and returns
+ * its id, name, and webhook URL.
+ */
 // creates a new bridge with a random secret id
 bridgeRoutes.post("/", async (context) => {
   // cryptographically random id
@@ -34,3 +39,4 @@ bridgeRoutes.post("/", async (context) => {
     201
   )
 })
+// #endregion

@@ -6,8 +6,12 @@ import { and, eq, gt, isNull } from "drizzle-orm"
 import { cloudLinks, sessions } from "@/db/schema"
 import { BridgeScope, hasScope } from "@/services/scopes"
 
+// #region Require Auth
 /**
  * auth-gate for protected routes
+ *
+ * @docs Middleware that authenticates a bearer token, resolves its live session
+ * and cloud link, and exposes them to the handler.
  */
 export const requireAuth = createMiddleware<{ Variables: AuthVariables }>(async (context, next) => {
   // authorization header
@@ -70,9 +74,13 @@ export const requireAuth = createMiddleware<{ Variables: AuthVariables }>(async 
   // proceed
   await next()
 })
+// #endregion
 
+// #region Require Scopes
 /**
  * scope-gate for scope-specific routes
+ *
+ * @docs Middleware factory that gates a route on one or more required scopes.
  */
 export const requireScopes = (scopes: BridgeScope[]) => {
   return createMiddleware<{
@@ -98,3 +106,4 @@ export const requireScopes = (scopes: BridgeScope[]) => {
     await next()
   })
 }
+// #endregion

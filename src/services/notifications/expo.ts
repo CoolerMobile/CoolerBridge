@@ -2,6 +2,7 @@ import { Device, Event, PushDelivery, PushProvider } from "@/schemas/cooler"
 import { revokeDevices } from "@/services/devices"
 import { Expo, type ExpoPushMessage, type ExpoPushTicket } from "expo-server-sdk"
 
+// #region Expo Client
 /**
  * expo client
  *
@@ -9,9 +10,14 @@ import { Expo, type ExpoPushMessage, type ExpoPushTicket } from "expo-server-sdk
  * Cooler so self-hosters never configure a provider here
  *
  * @see https://docs.expo.dev/push-notifications/sending-notifications/
+ *
+ * @docs The Expo client used to forward events; push credentials live in
+ * Cooler, so self-hosters configure no provider here.
  */
 const expo = new Expo()
+// #endregion
 
+// #region Build Message
 /**
  * builds an expo push message for a device
  *
@@ -19,6 +25,8 @@ const expo = new Expo()
  * @param event cooler event to deliver
  *
  * @returns {ExpoPushMessage} expo push message
+ *
+ * @docs Builds an Expo push message for a device from a Cooler event.
  */
 const buildMessage = (device: Device, event: Event): ExpoPushMessage => ({
   to: device.pushToken,
@@ -32,7 +40,9 @@ const buildMessage = (device: Device, event: Event): ExpoPushMessage => ({
     bridgeId: event.bridgeId,
   },
 })
+// #endregion
 
+// #region Expo Push Provider
 /**
  * expo push provider
  *
@@ -40,6 +50,9 @@ const buildMessage = (device: Device, event: Event): ExpoPushMessage => ({
  * its device and prunes tokens expo reports as no longer registered
  *
  * @see https://docs.expo.dev/push-notifications/sending-notifications/
+ *
+ * @docs Delivers events to devices through Expo, mapping each ticket back to
+ * its device and pruning tokens Expo reports as unregistered.
  */
 export const expoPushProvider: PushProvider = {
   async send(devices, event) {
@@ -109,3 +122,4 @@ export const expoPushProvider: PushProvider = {
     return deliveries
   },
 }
+// #endregion

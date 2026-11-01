@@ -11,11 +11,21 @@ import { isBridgeScope } from "@/services/scopes"
 
 export const authRoutes = new Hono()
 
+// #region Exchange Schema
+/**
+ * @docs Request body for the token exchange, carrying the signed cloud access
+ * assertion.
+ */
 // exchange schema
 const exchangeSchema = z.object({
   assertion: z.string().min(1),
 })
+// #endregion
 
+// #region Current Session Route
+/**
+ * @docs Returns the authenticated session's id, granted scopes, and expiry.
+ */
 authRoutes.get("/me", requireAuth, async (context) => {
   // current session
   const session = context.get("session")
@@ -37,7 +47,13 @@ authRoutes.get("/me", requireAuth, async (context) => {
     expiresAt: session.expiresAt,
   })
 })
+// #endregion
 
+// #region Logout Route
+/**
+ * @docs Revokes the current session, rejecting the request if it has already
+ * been revoked.
+ */
 authRoutes.post("/logout", requireAuth, async (context) => {
   const session = context.get("session")
 
@@ -80,7 +96,13 @@ authRoutes.post("/logout", requireAuth, async (context) => {
     )
   }
 })
+// #endregion
 
+// #region Token Exchange Route
+/**
+ * @docs Exchanges a verified cloud access assertion for a scoped, time-limited
+ * bridge session token.
+ */
 authRoutes.post("/exchange", zValidator("json", exchangeSchema), async (context) => {
   // extract assertion from request
   const { assertion } = context.req.valid("json")
@@ -159,3 +181,4 @@ authRoutes.post("/exchange", zValidator("json", exchangeSchema), async (context)
     scopes,
   })
 })
+// #endregion

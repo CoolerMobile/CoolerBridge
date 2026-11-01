@@ -6,6 +6,11 @@ import { requireAuth, requireScopes } from "@/auth/middleware"
 
 export const eventRoutes = new Hono()
 
+// #region List Events Route
+/**
+ * @docs Returns every event for the authenticated bridge, newest first, for
+ * callers holding the events:read scope.
+ */
 // get all events for authenticated user's bridge
 eventRoutes.get("/", requireAuth, requireScopes(["events:read"]), async (context) => {
   // cloud link
@@ -21,7 +26,13 @@ eventRoutes.get("/", requireAuth, requireScopes(["events:read"]), async (context
   // return json-encoded event list
   return context.json(eventList)
 })
+// #endregion
 
+// #region Get Event Route
+/**
+ * @docs Returns a single event by id, scoped to the authenticated bridge, for
+ * callers holding the events:read scope.
+ */
 // get event data by id
 eventRoutes.get("/:id", requireAuth, requireScopes(["events:read"]), async (context) => {
   // cloud link & event id
@@ -46,3 +57,4 @@ eventRoutes.get("/:id", requireAuth, requireScopes(["events:read"]), async (cont
   // return json-encoded event data
   return context.json(event)
 })
+// #endregion
