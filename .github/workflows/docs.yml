@@ -1,0 +1,26 @@
+name: Trigger docs deploy
+
+# the docs site is a static build that bakes in the bridge source at build time
+# so it must be rebuilt whenever main changes or a new release is published
+on:
+  push:
+    branches: [main]
+  release:
+    types: [published]
+
+# one deploy at a time, newer pushes supersede an in-flight one
+concurrency:
+  group: docs-deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Coolify deploy
+        # the deploy hook url and api token are stored as repo secrets
+        # coolify rebuilds the docs image, which refetches the bridge source
+        run: |
+          curl --fail --silent --show-error \
+            --request GET "${{ secrets.COOLIFY_DOCS_DEPLOY_HOOK }}" \
+            --header "Authorization: Bearer ${{ secrets.COOLIFY_API_TOKEN }}"
