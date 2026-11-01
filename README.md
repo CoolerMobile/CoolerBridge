@@ -45,7 +45,7 @@ const secret = Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString(
 
 The resulting URL will resemble the following:
 
-`https://bridge.getcooler.app/v1/webhooks/coolify/YEm8oNOqhvYKjpyB3q...`
+`https://<your-bridge-instance>/v1/webhooks/coolify/YEm8oNOqhvYKjpyB3q...`
 
 ### Upstream changes
 
@@ -96,13 +96,13 @@ All configuration is provided through environment variables.
 
 | Variable            | Required          | Description                                                                                       |
 | ------------------- | ----------------- | ------------------------------------------------------------------------------------------------- |
-| `NODE_ENV`          | yes               | `production` reads the cloud key from `CLOUD_PUBLIC_KEY`; `development` reads it from `dev/keys`.  |
-| `POSTGRES_DB`       | no                | Database name for the bundled Postgres. Defaults to `coolerbridge`.                                |
-| `POSTGRES_USER`     | no                | Database user for the bundled Postgres. Defaults to `coolerbridge`.                                |
+| `NODE_ENV`          | yes               | `production` reads the cloud key from `CLOUD_PUBLIC_KEY`; `development` reads it from `dev/keys`. |
+| `POSTGRES_DB`       | no                | Database name for the bundled Postgres. Defaults to `coolerbridge`.                               |
+| `POSTGRES_USER`     | no                | Database user for the bundled Postgres. Defaults to `coolerbridge`.                               |
 | `POSTGRES_PASSWORD` | yes               | Database password. Set a strong, unique value. Generate with `openssl rand -base64 24`.           |
-| `DATABASE_URL`      | yes               | PostgreSQL connection string. In Compose it is derived from the `POSTGRES_*` values above.         |
+| `DATABASE_URL`      | yes               | PostgreSQL connection string. In Compose it is derived from the `POSTGRES_*` values above.        |
 | `CLOUD_PUBLIC_KEY`  | yes in production | Cooler cloud public key (Ed25519 SPKI, PEM). On a single line, with `\n` for newlines.            |
-| `PAIRING_PEPPER`    | yes               | Secret pepper mixed into pairing code digests. Generate with `openssl rand -base64 32`.            |
+| `PAIRING_PEPPER`    | yes               | Secret pepper mixed into pairing code digests. Generate with `openssl rand -base64 32`.           |
 | `PORT`              | no                | Port the bridge listens on. Defaults to `3000`.                                                   |
 
 The API version is static (`v1`) and is **not** tied to the bridge's release version. It only changes when the public API itself does.
@@ -146,14 +146,14 @@ CoolerBridge is built with [Bun](https://bun.sh), [Hono](https://hono.dev), and 
 
 Useful scripts:
 
-| Script             | Description                                      |
-| ------------------ | ------------------------------------------------ |
-| `bun dev`          | Run the server in watch mode (development).      |
-| `bun test`         | Run the test suite.                              |
-| `bun db:generate`  | Generate a new migration from the schema.        |
-| `bun db:migrate`   | Apply migrations.                                |
-| `bun db:push`      | Push the schema directly to the database.        |
-| `bun db:studio`    | Open Drizzle Studio.                             |
+| Script            | Description                                 |
+| ----------------- | ------------------------------------------- |
+| `bun dev`         | Run the server in watch mode (development). |
+| `bun test`        | Run the test suite.                         |
+| `bun db:generate` | Generate a new migration from the schema.   |
+| `bun db:migrate`  | Apply migrations.                           |
+| `bun db:push`     | Push the schema directly to the database.   |
+| `bun db:studio`   | Open Drizzle Studio.                        |
 
 ## Releases
 
