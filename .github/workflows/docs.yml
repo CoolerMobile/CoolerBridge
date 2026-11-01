@@ -22,5 +22,5 @@ jobs:
         # coolify rebuilds the docs image, which refetches the bridge source
         run: |
           curl --fail --silent --show-error \
-            --request GET "${{ secrets.COOLIFY_DOCS_DEPLOY_HOOK }}" \
+            --request POST "${{ secrets.COOLIFY_DOCS_DEPLOY_HOOK }}" \
             --header "Authorization: Bearer ${{ secrets.COOLIFY_API_TOKEN }}"
