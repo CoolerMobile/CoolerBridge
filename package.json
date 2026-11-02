@@ -6,6 +6,7 @@
     "dev": "NODE_ENV=development bun --watch src/index.ts",
     "start": "bun src/index.ts",
     "release": "gh workflow run release.yml",
+	"gen:docs": "gh workflow run docs.yml",
     "test": "bun test",
     "test:watch": "bun test --watch",
     "db:generate": "drizzle-kit generate",
