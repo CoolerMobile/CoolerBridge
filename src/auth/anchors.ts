@@ -26,8 +26,16 @@ export type CloudAnchor = {
  * a self-hosted cloud can replace them entirely with CLOUD_PUBLIC_KEY. because
  * these are public keys, committing them here leaks nothing.
  *
- * NOTE(review): paste the production cloud public key(s) before release. until
- * then a bridge falls back to jwks discovery and cannot verify offline.
+ * to rotate, generate a new pair with `bun dev/gen-anchor.ts <kid>`, add its
+ * public key here with the matching kid, and start signing with the new key in
+ * cloud. keep the previous anchor until no live assertions reference it.
  */
-export const cloudAnchors: CloudAnchor[] = []
+export const cloudAnchors: CloudAnchor[] = [
+  {
+    kid: "cloud-2026",
+    pem: `-----BEGIN PUBLIC KEY-----
+MCowBQYDK2VwAyEAvPrRbymSjddtvXXlJUu9OHXzzUj2vIWN+zXV4ivbbYc=
+-----END PUBLIC KEY-----`,
+  },
+]
 // #endregion

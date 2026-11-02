@@ -4,6 +4,9 @@ drizzle
 # dev extras
 dev/keys
 
+# cloud signing keys (private key belongs in cooler cloud, never commit it)
+keys
+
 # release artifacts
 RELEASE_NOTES.md
 
