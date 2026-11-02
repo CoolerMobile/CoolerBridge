@@ -1,57 +1,58 @@
-import { importSPKI, jwtVerify } from "jose"
+import { jwtVerify } from "jose"
+import type { JWTPayload } from "jose"
+import { config } from "@/config"
+import { resolveCandidateKeys } from "@/auth/keys"
 import { CloudPairingAssertion } from "@/auth/assert"
 
-// #region Cloud Public Key
+// #region Verify Assertion
 /**
- * @docs Loads the Cooler cloud Ed25519 public key, from the environment in
- * production and from dev keys in development, exiting if none is present.
+ * verifies `assertion` against the cloud trust anchors
+ *
+ * @param assertion the cloud-signed jwt to verify
+ *
+ * @docs Tries each candidate key the key resolver returns until the signature,
+ * issuer, and audience all check out, then returns the payload. throws when no
+ * trusted key validates the assertion.
+ *
+ * @returns {Promise<JWTPayload>} the verified claims
  */
-// encryption algorithm
-const alg = "Ed25519"
+const verifyAssertion = async (assertion: string): Promise<JWTPayload> => {
+  const keys = await resolveCandidateKeys(assertion)
 
-// public key - env in prod and file in dev
-let pubKey
-switch (Bun.env.NODE_ENV) {
-  case "production": {
-    // env files carry the pem on a single line, so restore the newlines before parsing
-    const pem = Bun.env.CLOUD_PUBLIC_KEY!.replace(/\\n/g, "\n")
-    pubKey = await importSPKI(pem, alg)
-    break
+  // no trusted key applies to this assertion
+  if (keys.length === 0) throw new Error("No cloud verification keys available")
+
+  // try every candidate, remembering the last failure for the throw
+  let lastError: unknown
+  for (const key of keys) {
+    try {
+      const { payload } = await jwtVerify(assertion, key, {
+        algorithms: [config.cloud.alg],
+        issuer: config.cloud.issuer,
+        audience: config.cloud.audience,
+      })
+
+      return payload
+    } catch (error) {
+      lastError = error
+    }
   }
 
-  case "development": {
-    const pem = await Bun.file(new URL("../../dev/keys/cooler-public.pem", import.meta.url)).text()
-    pubKey = await importSPKI(pem, alg)
-    break
-  }
-
-  default:
-    pubKey = null
-}
-
-// exit early if key is not present
-if (!pubKey) {
-  console.error('No public key. Did you run "bun gen:keys"?')
-  process.exit(1)
+  throw lastError ?? new Error("Cloud assertion verification failed")
 }
 // #endregion
 
 // #region Verify Pair Assertion
 /**
- * verifies pairing `assertion` against valid public key
+ * verifies pairing `assertion` against the cloud trust anchors
  *
  * @param assertion assertion to verify
  *
- * @docs Verifies a pairing assertion against the cloud public key and returns
- * its normalized claims.
+ * @docs Verifies a pairing assertion and returns its normalized claims.
  */
 export const verifyPairAssertion = async (assertion: string): Promise<CloudPairingAssertion> => {
-  // extract & validate payload
-  const { payload } = await jwtVerify(assertion, pubKey, {
-    algorithms: [alg],
-    issuer: "https://cloud.getcooler.app",
-    audience: "coolerbridge",
-  })
+  // verify & extract payload
+  const payload = await verifyAssertion(assertion)
 
   // validate payload data
   if (
@@ -73,20 +74,16 @@ export const verifyPairAssertion = async (assertion: string): Promise<CloudPairi
 
 // #region Verify Cloud Assertion
 /**
- * verifies cloud access assertion against valid public key
+ * verifies access `assertion` against the cloud trust anchors
  *
  * @param assertion assertion to verify
  *
- * @docs Verifies a cloud access assertion against the cloud public key and
- * returns its normalized claims and scopes.
+ * @docs Verifies a cloud access assertion and returns its normalized claims and
+ * scopes.
  */
 export const verifyCloudAssertion = async (assertion: string) => {
-  // payload
-  const { payload } = await jwtVerify(assertion, pubKey, {
-    algorithms: [alg],
-    issuer: "https://cloud.getcooler.app",
-    audience: "coolerbridge",
-  })
+  // verify & extract payload
+  const payload = await verifyAssertion(assertion)
 
   // validate payload data
   if (typeof payload.sub !== "string" || typeof payload.bridgeId !== "string") {
