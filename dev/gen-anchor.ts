@@ -13,15 +13,18 @@ const { privateKey, publicKey } = await generateKeyPair("Ed25519", {
 const privatePem = await exportPKCS8(privateKey)
 const publicPem = await exportSPKI(publicKey)
 
-// write keys to the gitignored keys dir
-// the private key belongs in cooler cloud, keep it out of the repo
+// the private key belongs in cooler cloud, keep it in the gitignored keys dir
 await Bun.write("./keys/cloud-private.pem", privatePem)
-await Bun.write("./keys/cloud-public.pem", publicPem)
 
-// log results, the public key is pasted into auth/anchors as a baked anchor
+// the public key is a committed anchor, written straight to its home
+const anchorPath = `./src/auth/anchors/${kid}.pem`
+await Bun.write(anchorPath, publicPem)
+
+// log results, register the anchor in auth/anchors to start trusting it
 console.info(`Generated CoolerCloud signing key-pair (kid: ${kid})`)
 console.log()
 console.info("Private key -> keys/cloud-private.pem (install in cooler cloud, never commit)")
-console.info("Public key  -> keys/cloud-public.pem (bake into src/auth/anchors.ts)")
+console.info(`Public key  -> ${anchorPath} (committed anchor)`)
 console.log()
-console.info(publicPem)
+console.info(`Register it in src/auth/anchors.ts:`)
+console.info(`  { kid: "${kid}", pem: await readAnchorPem("${kid}.pem") }`)

@@ -16,6 +16,20 @@ export type CloudAnchor = {
 }
 // #endregion
 
+// #region Read Anchor
+/**
+ * reads a committed anchor pem next to this module
+ *
+ * @param file pem file name under anchors/
+ *
+ * @docs Reads a baked anchor pem from the anchors/ directory. the files ship
+ * in the image alongside the source, so the read works offline at runtime.
+ *
+ * @returns {Promise<string>} the pem contents
+ */
+const readAnchorPem = (file: string) => Bun.file(new URL(`./anchors/${file}`, import.meta.url)).text()
+// #endregion
+
 // #region Cloud Anchors
 /**
  * @docs The Cooler cloud public keys shipped with the image. these are the
@@ -26,16 +40,14 @@ export type CloudAnchor = {
  * a self-hosted cloud can replace them entirely with CLOUD_PUBLIC_KEY. because
  * these are public keys, committing them here leaks nothing.
  *
- * to rotate, generate a new pair with `bun dev/gen-anchor.ts <kid>`, add its
- * public key here with the matching kid, and start signing with the new key in
- * cloud. keep the previous anchor until no live assertions reference it.
+ * to rotate, generate a new pair with `bun dev/gen-anchor.ts <kid>`, register
+ * its public key here with the matching kid, and start signing with the new
+ * key in cloud. keep the previous anchor until no live assertions reference it.
  */
 export const cloudAnchors: CloudAnchor[] = [
   {
     kid: "cloud-2026",
-    pem: `-----BEGIN PUBLIC KEY-----
-MCowBQYDK2VwAyEAvPrRbymSjddtvXXlJUu9OHXzzUj2vIWN+zXV4ivbbYc=
------END PUBLIC KEY-----`,
+    pem: await readAnchorPem("cloud-2026.pem"),
   },
 ]
 // #endregion
