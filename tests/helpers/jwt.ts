@@ -1,4 +1,4 @@
-import { importPKCS8, SignJWT } from "jose"
+import { exportSPKI, generateKeyPair, importPKCS8, SignJWT } from "jose"
 
 // signing algorithm, matches the production/dev cloud keys
 const alg = "Ed25519"
@@ -26,6 +26,34 @@ type AssertionClaims = {
   issuer?: string
   audience?: string
   expiresIn?: string
+  kid?: string
+}
+
+/**
+ * builds an unsigned jwt from claim overrides, allowing malformed
+ * claims so negative cases can be exercised
+ *
+ * @param claims claim overrides
+ */
+const buildAssertion = (claims: AssertionClaims) => {
+  const payload: Record<string, unknown> = {}
+  if ("bridgeId" in claims) payload.bridgeId = claims.bridgeId
+  if ("pairingId" in claims) payload.pairingId = claims.pairingId
+  if ("scope" in claims) payload.scope = claims.scope
+
+  // include the kid in the header only when provided
+  const header = claims.kid ? { alg, typ: "JWT", kid: claims.kid } : { alg, typ: "JWT" }
+
+  let jwt = new SignJWT(payload)
+    .setProtectedHeader(header)
+    .setIssuer(claims.issuer ?? issuer)
+    .setAudience(claims.audience ?? audience)
+    .setIssuedAt()
+    .setExpirationTime(claims.expiresIn ?? "5m")
+
+  if (claims.sub !== undefined) jwt = jwt.setSubject(claims.sub)
+
+  return jwt
 }
 
 /**
@@ -36,22 +64,30 @@ type AssertionClaims = {
  */
 export const signAssertion = async (claims: AssertionClaims = {}) => {
   const key = await loadPrivateKey()
+  return buildAssertion(claims).sign(key)
+}
 
-  const payload: Record<string, unknown> = {}
-  if ("bridgeId" in claims) payload.bridgeId = claims.bridgeId
-  if ("pairingId" in claims) payload.pairingId = claims.pairingId
-  if ("scope" in claims) payload.scope = claims.scope
+/**
+ * signs a jwt with a freshly generated, untrusted key
+ *
+ * the bridge never knows this key, so any assertion it signs must
+ * be rejected no matter how well-formed the claims are
+ *
+ * @param claims claim overrides
+ */
+export const signUntrustedAssertion = async (claims: AssertionClaims = {}) => {
+  const { privateKey } = await generateKeyPair(alg, { extractable: true })
+  return buildAssertion(claims).sign(privateKey)
+}
 
-  let jwt = new SignJWT(payload)
-    .setProtectedHeader({ alg, typ: "JWT" })
-    .setIssuer(claims.issuer ?? issuer)
-    .setAudience(claims.audience ?? audience)
-    .setIssuedAt()
-    .setExpirationTime(claims.expiresIn ?? "5m")
-
-  if (claims.sub !== undefined) jwt = jwt.setSubject(claims.sub)
-
-  return jwt.sign(key)
+/**
+ * exports a freshly generated public key as SPKI pem
+ *
+ * used to stand in for a self-hosted cloud override key
+ */
+export const generatePublicPem = async () => {
+  const { publicKey } = await generateKeyPair(alg, { extractable: true })
+  return exportSPKI(publicKey)
 }
 
 /**

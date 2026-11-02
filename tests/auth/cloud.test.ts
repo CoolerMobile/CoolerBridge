@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import { verifyCloudAssertion, verifyPairAssertion } from "@/auth/cloud"
-import { signAssertion } from "../helpers/jwt"
+import { resolveCandidateKeys } from "@/auth/keys"
+import { signAssertion, signUntrustedAssertion } from "../helpers/jwt"
 
 describe("verifyPairAssertion", () => {
   test("returns a normalized assertion for a valid token", async () => {
@@ -125,5 +126,47 @@ describe("verifyCloudAssertion", () => {
     })
 
     expect(verifyCloudAssertion(assertion)).rejects.toThrow()
+  })
+})
+
+describe("trust anchors", () => {
+  test("rejects an assertion signed by an untrusted key", async () => {
+    const assertion = await signUntrustedAssertion({
+      sub: "usr_1",
+      bridgeId: "cb_1",
+      pairingId: "pair_1",
+    })
+
+    expect(verifyPairAssertion(assertion)).rejects.toThrow()
+  })
+
+  test("verifies a well-formed assertion that carries a kid", async () => {
+    // the dev anchor is a wildcard, so a kid never blocks a valid signature
+    const assertion = await signAssertion({
+      sub: "usr_1",
+      bridgeId: "cb_1",
+      pairingId: "pair_1",
+      kid: "cloud-2026",
+    })
+
+    const result = await verifyPairAssertion(assertion)
+
+    expect(result).toEqual({
+      cloudUserId: "usr_1",
+      cloudBridgeId: "cb_1",
+      pairingId: "pair_1",
+    })
+  })
+
+  test("resolves the wildcard dev anchor for a token with a kid", async () => {
+    const assertion = await signAssertion({ sub: "usr_1", bridgeId: "cb_1", kid: "cloud-2026" })
+    const keys = await resolveCandidateKeys(assertion)
+
+    expect(keys.length).toBe(1)
+  })
+
+  test("resolves no keys for a garbage token", async () => {
+    const keys = await resolveCandidateKeys("not-a-jwt")
+    expect(keys).toEqual([])
   })
 })
