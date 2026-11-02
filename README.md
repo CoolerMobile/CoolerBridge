@@ -64,13 +64,50 @@ CoolerBridge ships as a container image published to the GitHub Container Regist
 
 ### Run with Compose
 
-1. Copy the example env file:
+1. Add a new Docker Compose resource in Coolify (or host locally):
+
+```yaml
+services:
+  bridge:
+    image: ghcr.io/coolermobile/coolerbridge:latest
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      # derived from the postgres credentials so the password lives in one place
+      DATABASE_URL: postgres://${POSTGRES_USER:-coolerbridge}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-coolerbridge}
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-coolerbridge}
+      POSTGRES_USER: ${POSTGRES_USER:-coolerbridge}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes:
+      - coolerbridge-postgres:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-coolerbridge} -d ${POSTGRES_DB:-coolerbridge}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  coolerbridge-postgres:
+```
+
+2. Copy the example env file:
 
    ```bash
    cp .env.example .env
    ```
 
-2. Generate strong secrets for the database password and the pairing pepper:
+3. Generate strong secrets for the database password and the pairing pepper:
 
    ```bash
    echo "POSTGRES_PASSWORD=$(openssl rand -base64 24)"
@@ -79,9 +116,9 @@ CoolerBridge ships as a container image published to the GitHub Container Regist
 
    Paste the output into your `.env`, replacing the `change-me` placeholders.
 
-3. Edit `.env` (see [Configuration](#configuration) below). Besides the secrets above, set `CLOUD_PUBLIC_KEY`.
+4. Edit `.env` (see [Configuration](#configuration) below). The two generated secrets are all you need; the Cooler cloud key is already built in.
 
-4. Start the stack:
+5. Start the stack:
 
    ```bash
    docker compose up -d
@@ -114,6 +151,12 @@ The bridge verifies every pairing and access assertion against Cooler cloud's Ed
 Keys do get rotated over time. To keep up without a redeploy, the bridge also performs standard [JWKS](https://datatracker.ietf.org/doc/html/rfc7517) discovery against Cooler cloud and trusts newly published keys (matched by their `kid`) over HTTPS. The baked-in keys remain the offline root of trust, so a bridge that can't reach the discovery endpoint still verifies assertions signed by a known key.
 
 If you run your own Cooler cloud, set `CLOUD_PUBLIC_KEY` to your own public key (this replaces the baked-in keys) and point `CLOUD_JWKS_URL` at your own endpoint, or set it empty to pin trust to that one key.
+
+### Upgrading
+
+As of `v2.0.0`, the Cooler cloud key ships baked into the image and `CLOUD_PUBLIC_KEY` is **no longer required**. Earlier versions demanded it in production; now the bridge verifies out of the box and picks up key rotation on its own.
+
+If you set `CLOUD_PUBLIC_KEY` on an older version, remove it from your `.env` so the bridge uses the built-in key. Keep it only if you run your own Cooler cloud, where it still works as an override (see [Cloud trust](#cloud-trust)).
 
 ### Push notifications
 
