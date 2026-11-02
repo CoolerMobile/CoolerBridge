@@ -7,6 +7,7 @@ on:
     branches: [main]
   release:
     types: [published]
+  workflow_dispatch:
 
 # one deploy at a time, newer pushes supersede an in-flight one
 concurrency:
