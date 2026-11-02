@@ -61,7 +61,6 @@ CoolerBridge ships as a container image published to the GitHub Container Regist
 
 - [Docker](https://docs.docker.com/get-docker/) with Compose, for self-hosting.
 - A running [Coolify](https://coolify.io) instance.
-- The Cooler cloud public key, used to verify pairing and access assertions.
 
 ### Run with Compose
 
@@ -94,18 +93,27 @@ The bridge is now available on port `3000`. The database schema is applied autom
 
 All configuration is provided through environment variables.
 
-| Variable            | Required          | Description                                                                                       |
-| ------------------- | ----------------- | ------------------------------------------------------------------------------------------------- |
-| `NODE_ENV`          | yes               | `production` reads the cloud key from `CLOUD_PUBLIC_KEY`; `development` reads it from `dev/keys`. |
-| `POSTGRES_DB`       | no                | Database name for the bundled Postgres. Defaults to `coolerbridge`.                               |
-| `POSTGRES_USER`     | no                | Database user for the bundled Postgres. Defaults to `coolerbridge`.                               |
-| `POSTGRES_PASSWORD` | yes               | Database password. Set a strong, unique value. Generate with `openssl rand -base64 24`.           |
-| `DATABASE_URL`      | yes               | PostgreSQL connection string. In Compose it is derived from the `POSTGRES_*` values above.        |
-| `CLOUD_PUBLIC_KEY`  | yes in production | Cooler cloud public key (Ed25519 SPKI, PEM). On a single line, with `\n` for newlines.            |
-| `PAIRING_PEPPER`    | yes               | Secret pepper mixed into pairing code digests. Generate with `openssl rand -base64 32`.           |
-| `PORT`              | no                | Port the bridge listens on. Defaults to `3000`.                                                   |
+| Variable            | Required | Description                                                                                                       |
+| ------------------- | -------- | --------------------------------------------------------------------------------------------------------------- |
+| `NODE_ENV`          | yes      | `production` uses the baked-in cloud keys and JWKS discovery; `development` reads the key from `dev/keys`.       |
+| `POSTGRES_DB`       | no       | Database name for the bundled Postgres. Defaults to `coolerbridge`.                                              |
+| `POSTGRES_USER`     | no       | Database user for the bundled Postgres. Defaults to `coolerbridge`.                                              |
+| `POSTGRES_PASSWORD` | yes      | Database password. Set a strong, unique value. Generate with `openssl rand -base64 24`.                          |
+| `DATABASE_URL`      | yes      | PostgreSQL connection string. In Compose it is derived from the `POSTGRES_*` values above.                       |
+| `PAIRING_PEPPER`    | yes      | Secret pepper mixed into pairing code digests. Generate with `openssl rand -base64 32`.                          |
+| `CLOUD_PUBLIC_KEY`  | no       | Override the cloud public key (Ed25519 SPKI, PEM) used to verify assertions. Only for a self-hosted cloud.       |
+| `CLOUD_JWKS_URL`    | no       | Override the JWKS discovery endpoint. Set empty to disable discovery. Only for a self-hosted cloud.              |
+| `PORT`              | no       | Port the bridge listens on. Defaults to `3000`.                                                                  |
 
 The API version is static (`v1`) and is **not** tied to the bridge's release version. It only changes when the public API itself does.
+
+### Cloud trust
+
+The bridge verifies every pairing and access assertion against Cooler cloud's Ed25519 public key. That key is a single, fixed value owned by Cooler, not something you generate, so the bridge **ships with it built in**. There is nothing to paste and no way to set the wrong value: pairing works out of the box.
+
+Keys do get rotated over time. To keep up without a redeploy, the bridge also performs standard [JWKS](https://datatracker.ietf.org/doc/html/rfc7517) discovery against Cooler cloud and trusts newly published keys (matched by their `kid`) over HTTPS. The baked-in keys remain the offline root of trust, so a bridge that can't reach the discovery endpoint still verifies assertions signed by a known key.
+
+If you run your own Cooler cloud, set `CLOUD_PUBLIC_KEY` to your own public key (this replaces the baked-in keys) and point `CLOUD_JWKS_URL` at your own endpoint, or set it empty to pin trust to that one key.
 
 ### Push notifications
 
