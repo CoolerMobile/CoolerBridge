@@ -25,7 +25,7 @@ export const config = {
     // issuer and audience each assertion must carry
     issuer: "https://cloud.getcooler.app",
     audience: "coolerbridge",
-    // jwks discovery endpoint, overridable for self-hosted clouds
+    // jwks discovery endpoint, overridable for development and testing
     // set CLOUD_JWKS_URL empty to disable discovery entirely
     jwksUrl: Bun.env.CLOUD_JWKS_URL ?? defaultJwksUrl,
   },

@@ -83,7 +83,7 @@ export const signUntrustedAssertion = async (claims: AssertionClaims = {}) => {
 /**
  * exports a freshly generated public key as SPKI pem
  *
- * used to stand in for a self-hosted cloud override key
+ * used to stand in for a CLOUD_PUBLIC_KEY override key
  */
 export const generatePublicPem = async () => {
   const { publicKey } = await generateKeyPair(alg, { extractable: true })

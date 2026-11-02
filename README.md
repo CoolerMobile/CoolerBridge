@@ -116,7 +116,7 @@ volumes:
 
    Paste the output into your `.env`, replacing the `change-me` placeholders.
 
-4. Edit `.env` (see [Configuration](#configuration) below). The two generated secrets are all you need; the Cooler cloud key is already built in.
+4. Edit `.env` (see [Configuration](#configuration) below). The two generated secrets are all you need; the CoolerCloud key is already built in.
 
 5. Start the stack:
 
@@ -130,33 +130,33 @@ The bridge is now available on port `3000`. The database schema is applied autom
 
 All configuration is provided through environment variables.
 
-| Variable            | Required | Description                                                                                                       |
-| ------------------- | -------- | --------------------------------------------------------------------------------------------------------------- |
-| `NODE_ENV`          | yes      | `production` uses the baked-in cloud keys and JWKS discovery; `development` reads the key from `dev/keys`.       |
+| Variable            | Required | Description                                                                                                      |
+| ------------------- | -------- | ---------------------------------------------------------------------------------------------------------------- |
+| `NODE_ENV`          | yes      | `production` uses the baked-in CoolerCloud key and JWKS discovery; `development` reads the key from `dev/keys`.  |
 | `POSTGRES_DB`       | no       | Database name for the bundled Postgres. Defaults to `coolerbridge`.                                              |
 | `POSTGRES_USER`     | no       | Database user for the bundled Postgres. Defaults to `coolerbridge`.                                              |
 | `POSTGRES_PASSWORD` | yes      | Database password. Set a strong, unique value. Generate with `openssl rand -base64 24`.                          |
 | `DATABASE_URL`      | yes      | PostgreSQL connection string. In Compose it is derived from the `POSTGRES_*` values above.                       |
 | `PAIRING_PEPPER`    | yes      | Secret pepper mixed into pairing code digests. Generate with `openssl rand -base64 32`.                          |
-| `CLOUD_PUBLIC_KEY`  | no       | Override the cloud public key (Ed25519 SPKI, PEM) used to verify assertions. Only for a self-hosted cloud.       |
-| `CLOUD_JWKS_URL`    | no       | Override the JWKS discovery endpoint. Set empty to disable discovery. Only for a self-hosted cloud.              |
+| `CLOUD_PUBLIC_KEY`  | no       | Advanced override for the baked-in CoolerCloud public key (Ed25519 SPKI, PEM). For development and testing only. |
+| `CLOUD_JWKS_URL`    | no       | Advanced override for the JWKS discovery endpoint; set empty to disable discovery. For development and testing.  |
 | `PORT`              | no       | Port the bridge listens on. Defaults to `3000`.                                                                  |
 
 The API version is static (`v1`) and is **not** tied to the bridge's release version. It only changes when the public API itself does.
 
 ### Cloud trust
 
-The bridge verifies every pairing and access assertion against Cooler cloud's Ed25519 public key. That key is a single, fixed value owned by Cooler, not something you generate, so the bridge **ships with it built in**. There is nothing to paste and no way to set the wrong value: pairing works out of the box.
+The bridge verifies every pairing and access assertion against CoolerCloud's Ed25519 public key. That key is a single, fixed value owned by Cooler, not something you generate, so the bridge **ships with it built in**. There is nothing to paste and no way to set the wrong value: pairing works out of the box.
 
-Keys do get rotated over time. To keep up without a redeploy, the bridge also performs standard [JWKS](https://datatracker.ietf.org/doc/html/rfc7517) discovery against Cooler cloud and trusts newly published keys (matched by their `kid`) over HTTPS. The baked-in keys remain the offline root of trust, so a bridge that can't reach the discovery endpoint still verifies assertions signed by a known key.
+Keys do get rotated over time. To keep up without a redeploy, the bridge also performs standard [JWKS](https://datatracker.ietf.org/doc/html/rfc7517) discovery against CoolerCloud and trusts newly published keys (matched by their `kid`) over HTTPS. The baked-in key remains the offline root of trust, so a bridge that can't reach the discovery endpoint still verifies assertions signed by a known key.
 
-If you run your own Cooler cloud, set `CLOUD_PUBLIC_KEY` to your own public key (this replaces the baked-in keys) and point `CLOUD_JWKS_URL` at your own endpoint, or set it empty to pin trust to that one key.
+`CLOUD_PUBLIC_KEY` and `CLOUD_JWKS_URL` are advanced overrides for development and testing only, such as pointing a bridge at a non-production CoolerCloud or pinning trust to a single key. Leave both unset in normal use.
 
 ### Upgrading
 
-As of `v2.0.0`, the Cooler cloud key ships baked into the image and `CLOUD_PUBLIC_KEY` is **no longer required**. Earlier versions demanded it in production; now the bridge verifies out of the box and picks up key rotation on its own.
+As of `v2.0.0`, the CoolerCloud key ships baked into the image and `CLOUD_PUBLIC_KEY` is **no longer required**. Earlier versions demanded it in production; now the bridge verifies out of the box and picks up key rotation on its own.
 
-If you set `CLOUD_PUBLIC_KEY` on an older version, remove it from your `.env` so the bridge uses the built-in key. Keep it only if you run your own Cooler cloud, where it still works as an override (see [Cloud trust](#cloud-trust)).
+If you set `CLOUD_PUBLIC_KEY` on an older version, remove it from your `.env` so the bridge uses the built-in key. Its only remaining purpose is an advanced override for development or testing (see [Cloud trust](#cloud-trust)).
 
 ### Push notifications
 

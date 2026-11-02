@@ -45,14 +45,14 @@ const importAnchor = async (pem: string, kid?: string): Promise<ResolvedAnchor |
 // #region Local Anchors
 /**
  * @docs Builds the local trust anchors for the current environment: a
- * CLOUD_PUBLIC_KEY override or the baked cloud keys in production, and the
+ * CLOUD_PUBLIC_KEY override or the baked CoolerCloud keys in production, and the
  * generated dev key in development. the dev key is a wildcard so dev and test
  * assertions verify regardless of any `kid`.
  */
 const buildLocalAnchors = async (): Promise<ResolvedAnchor[]> => {
   switch (Bun.env.NODE_ENV) {
     case "production": {
-      // optional override for self-hosted clouds, replaces the baked anchors
+      // optional override for development and testing, replaces the baked anchors
       const override = Bun.env.CLOUD_PUBLIC_KEY?.trim()
       if (override) {
         const resolved = await importAnchor(override)
