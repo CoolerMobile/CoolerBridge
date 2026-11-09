@@ -16,7 +16,7 @@ import { CloudPairingAssertion } from "@/auth/assert"
  *
  * @returns {Promise<JWTPayload>} the verified claims
  */
-const verifyAssertion = async (assertion: string): Promise<JWTPayload> => {
+export const verifyAssertion = async (assertion: string): Promise<JWTPayload> => {
   const keys = await resolveCandidateKeys(assertion)
 
   // no trusted key applies to this assertion

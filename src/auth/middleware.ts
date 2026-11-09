@@ -5,6 +5,7 @@ import { db } from "@/db"
 import { and, eq, gt, isNull } from "drizzle-orm"
 import { cloudLinks, sessions } from "@/db/schema"
 import { BridgeScope, hasScope } from "@/services/scopes"
+import { isContingencyActive } from "@/services/contingency"
 
 // #region Require Auth
 /**
@@ -64,6 +65,16 @@ export const requireAuth = createMiddleware<{ Variables: AuthVariables }>(async 
         error: "Unauthorized",
       },
       401
+    )
+  }
+
+  // contingency gate - a raised moat makes every bridge non-operational
+  if (await isContingencyActive({ cloudUserId: cloudLink.cloudUserId, bridgeId: cloudLink.bridgeId })) {
+    return context.json(
+      {
+        error: "Account in contingency mode",
+      },
+      423
     )
   }
 

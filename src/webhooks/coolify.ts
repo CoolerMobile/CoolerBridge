@@ -1,11 +1,12 @@
-import { eq } from "drizzle-orm"
+import { and, eq, isNull } from "drizzle-orm"
 import { db } from "@/db"
-import { bridges, events } from "@/db/schema"
+import { bridges, cloudLinks, events } from "@/db/schema"
 import { Hono } from "hono"
 import { coolifyWebhookSchema } from "@/schemas/coolify"
 import { zValidator } from "@hono/zod-validator"
 import { normalizeEvent } from "@/services/normalize"
 import { dispatchEvent } from "@/services/notifications/dispatch"
+import { isContingencyActive } from "@/services/contingency"
 
 export const coolifyWebhook = new Hono()
 
@@ -32,6 +33,19 @@ coolifyWebhook.post("/:secret", zValidator("json", coolifyWebhookSchema), async 
         error: "Bridge not found",
       },
       404
+    )
+  }
+
+  // contingency gate - a raised moat stops the relay before it stores or dispatches
+  const link = await db.query.cloudLinks.findFirst({
+    where: and(eq(cloudLinks.bridgeId, bridge.id), isNull(cloudLinks.revokedAt)),
+  })
+  if (link && (await isContingencyActive({ cloudUserId: link.cloudUserId, bridgeId: link.bridgeId }))) {
+    return context.json(
+      {
+        error: "Account in contingency mode",
+      },
+      423
     )
   }
 

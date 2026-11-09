@@ -8,6 +8,7 @@ import { cloudLinks, sessions } from "@/db/schema"
 import { generateSessionToken, tokenDigest } from "@/auth/utils"
 import { requireAuth } from "@/auth/middleware"
 import { isBridgeScope } from "@/services/scopes"
+import { isContingencyActive } from "@/services/contingency"
 
 export const authRoutes = new Hono()
 
@@ -138,6 +139,16 @@ authRoutes.post("/exchange", zValidator("json", exchangeSchema), async (context)
         error: "Bridge is not linked to this account",
       },
       403
+    )
+  }
+
+  // contingency gate - refuse to mint sessions while the moat is up
+  if (await isContingencyActive({ cloudUserId: link.cloudUserId, bridgeId: link.bridgeId })) {
+    return context.json(
+      {
+        error: "Account in contingency mode",
+      },
+      423
     )
   }
 
