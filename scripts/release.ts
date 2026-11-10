@@ -12,7 +12,7 @@ import pkg from "../package.json"
  */
 
 // conventional commit shape
-type Commit = {
+export type Commit = {
   type: string
   scope: string | null
   breaking: boolean
@@ -21,7 +21,7 @@ type Commit = {
 }
 
 // semantic bump kind, ordered by weight
-type Bump = "major" | "minor" | "patch"
+export type Bump = "major" | "minor" | "patch"
 
 // unit and record separators used to split the git log safely
 const US = "\x1f"
@@ -51,17 +51,16 @@ const lastTag = async (): Promise<string | null> => {
 }
 
 /**
- * collects the commits since `from` (exclusive), or the whole history when null
+ * parses a git log payload into conventional commits
  *
- * @param from tag to start from, exclusive
+ * kept separate from the git call so the parsing and bump logic can be tested
+ * without a repository
+ *
+ * @param raw git log output in the `%H US %s US %b RS` format
  * @returns parsed conventional commits
  */
-const commitsSince = async (from: string | null): Promise<Commit[]> => {
-  const range = from ? `${from}..HEAD` : "HEAD"
-  const format = `%H${US}%s${US}%b${RS}`
-  const out = await $`git log ${range} --no-merges --pretty=format:${format}`.text()
-
-  return out
+export const parseCommits = (raw: string): Commit[] => {
+  return raw
     .split(RS)
     .map((record) => record.trim())
     .filter(Boolean)
@@ -82,14 +81,31 @@ const commitsSince = async (from: string | null): Promise<Commit[]> => {
 }
 
 /**
+ * collects the commits since `from` (exclusive), or the whole history when null
+ *
+ * @param from tag to start from, exclusive
+ * @returns parsed conventional commits
+ */
+const commitsSince = async (from: string | null): Promise<Commit[]> => {
+  const range = from ? `${from}..HEAD` : "HEAD"
+  const format = `%H${US}%s${US}%b${RS}`
+  const out = await $`git log ${range} --no-merges --pretty=format:${format}`.text()
+
+  return parseCommits(out)
+}
+
+/**
  * decides the bump from the commit set
  *
  * breaking wins, then feat, then everything else is a patch since the release was requested on purpose
  *
+ * the whole commit set is considered, so an earlier breaking change or feature
+ * still drives the bump even when the latest commit is only a fix
+ *
  * @param commits parsed commits
  * @returns the bump to apply
  */
-const resolveBump = (commits: Commit[]): Bump => {
+export const resolveBump = (commits: Commit[]): Bump => {
   if (commits.some((commit) => commit.breaking)) return "major"
   if (commits.some((commit) => commit.type === "feat")) return "minor"
   return "patch"
@@ -102,7 +118,7 @@ const resolveBump = (commits: Commit[]): Bump => {
  * @param bump bump to apply
  * @returns the next version
  */
-const applyBump = (version: string, bump: Bump): string => {
+export const applyBump = (version: string, bump: Bump): string => {
   const [major, minor, patch] = version.split(".").map((part) => Number(part) || 0)
 
   switch (bump) {
@@ -171,34 +187,38 @@ const output = async (key: string, value: string) => {
   await appendFile(file, `${key}=${value}\n`)
 }
 
-// resolve the previous tag, the commits since, and the resulting version
-const previous = await lastTag()
-const commits = await commitsSince(previous)
+// only run the release when invoked directly, so tests can import the helpers
+// above without triggering a version bump
+if (import.meta.main) {
+  // resolve the previous tag, the commits since, and the resulting version
+  const previous = await lastTag()
+  const commits = await commitsSince(previous)
 
-if (commits.length === 0) {
-  console.error("No commits since the last release. Nothing to do.")
-  process.exit(1)
+  if (commits.length === 0) {
+    console.error("No commits since the last release. Nothing to do.")
+    process.exit(1)
+  }
+
+  const bump = resolveBump(commits)
+  const version = applyBump(pkg.version, bump)
+  const tag = `v${version}`
+  const notes = renderNotes(commits)
+
+  // persist the new version in package.json
+  const manifest = { ...pkg, version }
+  await Bun.write("package.json", `${JSON.stringify(manifest, null, 2)}\n`)
+
+  // write the curated notes for the release step to pick up
+  await Bun.write("RELEASE_NOTES.md", `${notes}\n`)
+
+  // hand the computed values to the workflow
+  await output("version", version)
+  await output("tag", tag)
+  await output("bump", bump)
+  await output("previous", previous ?? "")
+
+  console.info(`Bump: ${bump}`)
+  console.info(`Version: ${pkg.version} -> ${version}`)
+  console.info(`Tag: ${tag}`)
+  console.info(`Commits: ${commits.length}`)
 }
-
-const bump = resolveBump(commits)
-const version = applyBump(pkg.version, bump)
-const tag = `v${version}`
-const notes = renderNotes(commits)
-
-// persist the new version in package.json
-const manifest = { ...pkg, version }
-await Bun.write("package.json", `${JSON.stringify(manifest, null, 2)}\n`)
-
-// write the curated notes for the release step to pick up
-await Bun.write("RELEASE_NOTES.md", `${notes}\n`)
-
-// hand the computed values to the workflow
-await output("version", version)
-await output("tag", tag)
-await output("bump", bump)
-await output("previous", previous ?? "")
-
-console.info(`Bump: ${bump}`)
-console.info(`Version: ${pkg.version} -> ${version}`)
-console.info(`Tag: ${tag}`)
-console.info(`Commits: ${commits.length}`)
