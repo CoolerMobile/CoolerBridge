@@ -17,6 +17,11 @@ import postgres from "postgres"
 // auth/cloud loads its public key based on this
 process.env.NODE_ENV = "development"
 
+// keep the contingency channel off so a local .env never reaches a live cloud
+// services/contingency reads these when first imported
+delete process.env.CLOUD_STATUS_URL
+delete process.env.BRIDGE_RELAY_SECRET
+
 // base connection from .env
 const base = process.env.DATABASE_URL
 if (!base) {
