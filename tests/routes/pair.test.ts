@@ -85,6 +85,44 @@ describe("POST /v1/pairing/complete", () => {
     expect(second.status).toBe(400)
   })
 
+  test("keeps the existing link when the same account pairs again", async () => {
+    const first = await createChallenge()
+    expect((await complete(first.code, await signPairAssertion(first.id, "cb_pair_6"))).status).toBe(200)
+
+    // a re-scan issues a fresh challenge for the same bridge
+    const second = await createChallenge()
+    const res = await complete(second.code, await signPairAssertion(second.id, "cb_pair_6"))
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({ linked: true, cloudBridgeId: "cb_pair_6" })
+
+    const links = await db.select().from(cloudLinks).where(eq(cloudLinks.bridgeId, "cb_pair_6"))
+    expect(links).toHaveLength(1)
+  })
+
+  test("restores a revoked link when the same account pairs again", async () => {
+    const first = await createChallenge()
+    await complete(first.code, await signPairAssertion(first.id, "cb_pair_7"))
+    await db.update(cloudLinks).set({ revokedAt: new Date() }).where(eq(cloudLinks.bridgeId, "cb_pair_7"))
+
+    const second = await createChallenge()
+    expect((await complete(second.code, await signPairAssertion(second.id, "cb_pair_7"))).status).toBe(200)
+
+    const [link] = await db.select().from(cloudLinks).where(eq(cloudLinks.bridgeId, "cb_pair_7"))
+    expect(link!.revokedAt).toBeNull()
+  })
+
+  test("refuses a bridge linked to another account", async () => {
+    await db.insert(cloudLinks).values({ cloudUserId: "usr_other", bridgeId: "cb_pair_8" })
+
+    const challenge = await createChallenge()
+    const res = await complete(challenge.code, await signPairAssertion(challenge.id, "cb_pair_8"))
+    expect(res.status).toBe(409)
+
+    // the challenge stays unused
+    const [pairing] = await db.select().from(pairingChallenges).where(eq(pairingChallenges.id, challenge.id))
+    expect(pairing!.usedAt).toBeNull()
+  })
+
   test("rejects a request missing fields", async () => {
     const res = await app.request("/v1/pairing/complete", {
       method: "POST",

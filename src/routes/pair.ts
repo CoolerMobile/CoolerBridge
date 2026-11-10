@@ -50,19 +50,15 @@ pairingRoutes.post("/", async (context) => {
 /**
  * @docs Completes pairing by matching the code to an unused, unexpired
  * challenge, verifying the cloud assertion, and creating the cloud link.
+ * Pairing again from the same account (such as re-scanning the pairing QR
+ * code) keeps the existing link, restoring it if it was revoked, while a
+ * bridge already linked to another account is refused.
  */
 // complete pairing
 pairingRoutes.post("/complete", zValidator("json", completePairingSchema), async (context) => {
   // extract code & assertion from request
   // validate as json
   const { code, assertion } = context.req.valid("json")
-
-  // pairing candidates
-  // validate null usage & non-expired
-  const candidates = await db
-    .select()
-    .from(pairingChallenges)
-    .where(and(isNull(pairingChallenges.usedAt), gt(pairingChallenges.expiresAt, new Date())))
 
   // find matching pairing code by digest
   //
@@ -106,16 +102,34 @@ pairingRoutes.post("/complete", zValidator("json", completePairingSchema), async
     )
   }
 
+  // existing link for this bridge
+  const existing = await db.query.cloudLinks.findFirst({
+    where: eq(cloudLinks.bridgeId, cloud.cloudBridgeId),
+  })
+
+  // a bridge belongs to a single account
+  if (existing && existing.cloudUserId !== cloud.cloudUserId) {
+    return context.json(
+      {
+        error: "Bridge is already linked to another account",
+      },
+      409
+    )
+  }
+
   // create link & update code usage
   const link = await db.transaction(async (tx) => {
     // set up link
-    const [created] = await tx
-      .insert(cloudLinks)
-      .values({
-        cloudUserId: cloud.cloudUserId,
-        bridgeId: cloud.cloudBridgeId,
-      })
-      .returning()
+    // a re-pair from the same account keeps the existing link
+    const [created] = existing
+      ? await tx.update(cloudLinks).set({ revokedAt: null }).where(eq(cloudLinks.id, existing.id)).returning()
+      : await tx
+          .insert(cloudLinks)
+          .values({
+            cloudUserId: cloud.cloudUserId,
+            bridgeId: cloud.cloudBridgeId,
+          })
+          .returning()
 
     // update code usage
     const [consumed] = await tx
