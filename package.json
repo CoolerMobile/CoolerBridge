@@ -1,7 +1,7 @@
 {
   "name": "cooler-bridge",
   "type": "module",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "scripts": {
     "dev": "NODE_ENV=development bun --watch src/index.ts",
     "start": "bun src/index.ts",
