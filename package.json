@@ -3,7 +3,7 @@
   "type": "module",
   "version": "2.1.0",
   "scripts": {
-    "dev": "NODE_ENV=development bun --watch src/index.ts",
+    "dev": "NODE_ENV=development bun --use-system-ca --watch src/index.ts",
     "start": "bun src/index.ts",
     "release": "gh workflow run release.yml",
     "gen:docs": "gh workflow run docs.yml",
