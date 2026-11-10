@@ -53,6 +53,9 @@ web_modules/
 .env.test.local
 .env.production.local
 .env.local
+# env backups and variants, only the example is committed
+.env.*
+!.env.example
 .cache
 .parcel-cache
 .next
