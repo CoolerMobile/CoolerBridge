@@ -57,8 +57,10 @@ deviceRoutes.get("/", requireAuth, requireScopes(["devices:read"]), async (conte
 
 // #region Create Device Route
 /**
- * @docs Registers a new device under the authenticated account's cloud link,
- * requiring the devices:write scope.
+ * @docs Registers a device under the authenticated account's cloud link,
+ * requiring the devices:write scope. A push token identifies one app install,
+ * so registering a token the bridge already knows moves that device to the
+ * registering link, as when a phone pairs again, instead of failing.
  */
 // create device
 deviceRoutes.post(
@@ -82,11 +84,16 @@ deviceRoutes.post(
     }
 
     // create device for current user's cloud link
+    // a known push token is the same install, so it moves here and is restored
     const [device] = await db
       .insert(devices)
       .values({
         ...deviceData,
         cloudLinkId: cloudLink.id,
+      })
+      .onConflictDoUpdate({
+        target: devices.pushToken,
+        set: { platform: deviceData.platform, cloudLinkId: cloudLink.id, revokedAt: null },
       })
       .returning()
 

@@ -77,6 +77,29 @@ describe("POST /v1/devices", () => {
     expect(row).toBeDefined()
   })
 
+  test("moves a known push token to the registering link instead of failing", async () => {
+    // the phone was registered by an earlier pairing, then revoked there
+    const earlier = await seedAuthedSession(["devices:read", "devices:write"])
+    const stale = await seedDevice(earlier.cloudLink.id, { pushToken: "ExponentPushToken[tok-2]" })
+    await db.update(devices).set({ revokedAt: new Date() }).where(eq(devices.id, stale.id))
+
+    // pairing again registers the same install under the new link
+    const { cloudLink, token } = await seedAuthedSession(["devices:read", "devices:write"])
+    const res = await app.request("/v1/devices", {
+      ...body({ platform: "ios", pushToken: "ExponentPushToken[tok-2]" }),
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    })
+
+    expect(res.status).toBe(201)
+    const device = await res.json()
+    expect(device.id).toBe(stale.id)
+    expect(device.cloudLinkId).toBe(cloudLink.id)
+    expect(device.revokedAt).toBeNull()
+
+    const rows = await db.select().from(devices).where(eq(devices.pushToken, "ExponentPushToken[tok-2]"))
+    expect(rows).toHaveLength(1)
+  })
+
   test("rejects an invalid body", async () => {
     const { token } = await seedAuthedSession(["devices:read", "devices:write"])
 
