@@ -1,4 +1,5 @@
 import { importPKCS8, SignJWT } from "jose"
+import { config } from "@/config"
 
 // bridge id from args
 const bridgeId = process.argv[2]
@@ -22,8 +23,9 @@ const assertion = await new SignJWT({
 })
   .setProtectedHeader({
     alg: "Ed25519",
-    typ: "JWT",
+    typ: config.cloud.tokenTypes.access,
   })
+  .setJti(crypto.randomUUID())
   .setSubject("usr_dev_danfq")
   .setIssuer("https://cloud.getcooler.app")
   .setAudience("coolerbridge")

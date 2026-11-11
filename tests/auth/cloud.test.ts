@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import { verifyCloudAssertion, verifyPairAssertion } from "@/auth/cloud"
 import { resolveCandidateKeys } from "@/auth/keys"
-import { signAssertion, signUntrustedAssertion } from "../helpers/jwt"
+import { signAssertion, signUntrustedAssertion, tokenTypes } from "../helpers/jwt"
 
 describe("verifyPairAssertion", () => {
   test("returns a normalized assertion for a valid token", async () => {
@@ -54,8 +54,18 @@ describe("verifyPairAssertion", () => {
   })
 
   test("rejects a token missing the pairing id claim", async () => {
-    const assertion = await signAssertion({ sub: "usr_1", bridgeId: "cb_1" })
+    const assertion = await signAssertion({ sub: "usr_1", bridgeId: "cb_1", typ: tokenTypes.pair })
     expect(verifyPairAssertion(assertion)).rejects.toThrow("Invalid cloud assertion")
+  })
+
+  test("rejects an access assertion presented for pairing", async () => {
+    const assertion = await signAssertion({
+      sub: "usr_1",
+      bridgeId: "cb_1",
+      pairingId: "pair_1",
+      typ: tokenTypes.access,
+    })
+    expect(verifyPairAssertion(assertion)).rejects.toThrow('unexpected "typ"')
   })
 
   test("rejects a token missing the subject", async () => {
@@ -126,6 +136,40 @@ describe("verifyCloudAssertion", () => {
     })
 
     expect(verifyCloudAssertion(assertion)).rejects.toThrow()
+  })
+
+  test("rejects a pairing assertion presented for access", async () => {
+    const assertion = await signAssertion({ sub: "usr_1", bridgeId: "cb_1", pairingId: "pair_1" })
+    expect(verifyCloudAssertion(assertion)).rejects.toThrow('unexpected "typ"')
+  })
+
+  test("rejects a contingency status token presented for access", async () => {
+    const assertion = await signAssertion({ sub: "usr_1", bridgeId: "cb_1", typ: tokenTypes.status })
+    expect(verifyCloudAssertion(assertion)).rejects.toThrow('unexpected "typ"')
+  })
+
+  test("rejects an untyped jwt", async () => {
+    const assertion = await signAssertion({ sub: "usr_1", bridgeId: "cb_1", typ: "JWT" })
+    expect(verifyCloudAssertion(assertion)).rejects.toThrow('unexpected "typ"')
+  })
+
+  test("rejects a token older than the maximum age, even when not expired", async () => {
+    const assertion = await signAssertion({
+      sub: "usr_1",
+      bridgeId: "cb_1",
+      issuedAt: Math.floor(Date.now() / 1000) - 60 * 60,
+      expiresIn: "1h",
+    })
+    expect(verifyCloudAssertion(assertion)).rejects.toThrow()
+  })
+
+  test("tolerates a cloud clock slightly ahead", async () => {
+    const assertion = await signAssertion({
+      sub: "usr_1",
+      bridgeId: "cb_1",
+      issuedAt: Math.floor(Date.now() / 1000) + 10,
+    })
+    expect((await verifyCloudAssertion(assertion)).cloudUserId).toBe("usr_1")
   })
 })
 

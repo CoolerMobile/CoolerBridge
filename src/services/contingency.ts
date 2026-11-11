@@ -82,10 +82,10 @@ export const isContingencyActive = async (params: {
     if (!token) return failSafe()
 
     // decrypt the sealed reply, then verify the inner token against the cloud
-    // trust anchors, the same way assertions are verified (signature, issuer, audience)
+    // trust anchors, the same way assertions are verified (signature, status typ, issuer, audience, age)
     const { plaintext } = await compactDecrypt(token, privateKey)
     const jws = new TextDecoder().decode(plaintext)
-    const payload = await verifyAssertion(jws)
+    const payload = await verifyAssertion(jws, "status")
 
     // bind the answer to the user we asked about
     if (payload.sub !== params.cloudUserId) return failSafe()

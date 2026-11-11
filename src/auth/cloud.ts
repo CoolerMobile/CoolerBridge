@@ -4,19 +4,28 @@ import { config } from "@/config"
 import { resolveCandidateKeys } from "@/auth/keys"
 import { CloudPairingAssertion } from "@/auth/assert"
 
+// #region Token Kind
+/**
+ * @docs The kinds of token CoolerCloud signs for bridges, each bound to its own
+ * explicit `typ` header so one kind can never be accepted as another.
+ */
+export type CloudTokenKind = keyof typeof config.cloud.tokenTypes
+// #endregion
+
 // #region Verify Assertion
 /**
  * verifies `assertion` against the cloud trust anchors
  *
  * @param assertion the cloud-signed jwt to verify
+ * @param kind the kind of token expected, matched against its `typ` header
  *
  * @docs Tries each candidate key the key resolver returns until the signature,
- * issuer, and audience all check out, then returns the payload. throws when no
- * trusted key validates the assertion.
+ * token type, issuer, audience, and age all check out, then returns the
+ * payload. Throws when no trusted key validates the assertion.
  *
  * @returns {Promise<JWTPayload>} the verified claims
  */
-export const verifyAssertion = async (assertion: string): Promise<JWTPayload> => {
+export const verifyAssertion = async (assertion: string, kind: CloudTokenKind): Promise<JWTPayload> => {
   const keys = await resolveCandidateKeys(assertion)
 
   // no trusted key applies to this assertion
@@ -28,8 +37,11 @@ export const verifyAssertion = async (assertion: string): Promise<JWTPayload> =>
     try {
       const { payload } = await jwtVerify(assertion, key, {
         algorithms: [config.cloud.alg],
+        typ: config.cloud.tokenTypes[kind],
         issuer: config.cloud.issuer,
         audience: config.cloud.audience,
+        maxTokenAge: config.cloud.maxTokenAge,
+        clockTolerance: config.cloud.clockTolerance,
       })
 
       return payload
@@ -52,7 +64,7 @@ export const verifyAssertion = async (assertion: string): Promise<JWTPayload> =>
  */
 export const verifyPairAssertion = async (assertion: string): Promise<CloudPairingAssertion> => {
   // verify & extract payload
-  const payload = await verifyAssertion(assertion)
+  const payload = await verifyAssertion(assertion, "pair")
 
   // validate payload data
   if (
@@ -83,7 +95,7 @@ export const verifyPairAssertion = async (assertion: string): Promise<CloudPairi
  */
 export const verifyCloudAssertion = async (assertion: string) => {
   // verify & extract payload
-  const payload = await verifyAssertion(assertion)
+  const payload = await verifyAssertion(assertion, "access")
 
   // validate payload data
   if (typeof payload.sub !== "string" || typeof payload.bridgeId !== "string") {

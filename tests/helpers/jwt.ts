@@ -1,4 +1,5 @@
 import { exportSPKI, generateKeyPair, importPKCS8, SignJWT } from "jose"
+import { config } from "@/config"
 
 // signing algorithm, matches the production/dev cloud keys
 const alg = "Ed25519"
@@ -18,6 +19,9 @@ const loadPrivateKey = async () => {
   return importPKCS8(pem, alg)
 }
 
+// explicit typ per token kind, as the cloud stamps them
+export const tokenTypes = config.cloud.tokenTypes
+
 type AssertionClaims = {
   sub?: string
   bridgeId?: unknown
@@ -27,11 +31,20 @@ type AssertionClaims = {
   audience?: string
   expiresIn?: string
   kid?: string
+  // header typ, inferred from the claims when omitted
+  typ?: string
+  // assertion id, random when omitted and left out entirely when null
+  jti?: string | null
+  // issued-at in seconds, now when omitted
+  issuedAt?: number
 }
 
 /**
  * builds an unsigned jwt from claim overrides, allowing malformed
  * claims so negative cases can be exercised
+ *
+ * the typ defaults to a pairing assertion when a pairing id is
+ * present and to an access assertion otherwise
  *
  * @param claims claim overrides
  */
@@ -41,17 +54,21 @@ const buildAssertion = (claims: AssertionClaims) => {
   if ("pairingId" in claims) payload.pairingId = claims.pairingId
   if ("scope" in claims) payload.scope = claims.scope
 
+  // explicit typ, or the one the claims imply
+  const typ = claims.typ ?? ("pairingId" in claims ? tokenTypes.pair : tokenTypes.access)
+
   // include the kid in the header only when provided
-  const header = claims.kid ? { alg, typ: "JWT", kid: claims.kid } : { alg, typ: "JWT" }
+  const header = claims.kid ? { alg, typ, kid: claims.kid } : { alg, typ }
 
   let jwt = new SignJWT(payload)
     .setProtectedHeader(header)
     .setIssuer(claims.issuer ?? issuer)
     .setAudience(claims.audience ?? audience)
-    .setIssuedAt()
+    .setIssuedAt(claims.issuedAt)
     .setExpirationTime(claims.expiresIn ?? "5m")
 
   if (claims.sub !== undefined) jwt = jwt.setSubject(claims.sub)
+  if (claims.jti !== null) jwt = jwt.setJti(claims.jti ?? crypto.randomUUID())
 
   return jwt
 }

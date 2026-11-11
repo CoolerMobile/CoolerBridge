@@ -1,4 +1,5 @@
 import { importPKCS8, SignJWT } from "jose"
+import { config } from "@/config"
 
 // pairing id from args
 const pairingId = process.argv[2]
@@ -21,7 +22,8 @@ const cloudBridgeId = `cb_${crypto.randomUUID()}`
 
 // assertion
 const assertion = await new SignJWT({ bridgeId: cloudBridgeId, pairingId })
-  .setProtectedHeader({ alg: "Ed25519", typ: "JWT" })
+  .setProtectedHeader({ alg: "Ed25519", typ: config.cloud.tokenTypes.pair })
+  .setJti(crypto.randomUUID())
   .setSubject(cloudUserId)
   .setIssuer("https://cloud.getcooler.app")
   .setAudience("coolerbridge")
