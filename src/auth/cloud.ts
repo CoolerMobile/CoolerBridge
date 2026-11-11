@@ -1,7 +1,7 @@
 import { jwtVerify } from "jose"
 import type { JWTPayload } from "jose"
 import { config } from "@/config"
-import { resolveCandidateKeys } from "@/auth/keys"
+import { isSignedAfterRotation, keyRotatedAt, resolveCandidateKeys } from "@/auth/keys"
 import { CloudPairingAssertion } from "@/auth/assert"
 
 // #region Token Kind
@@ -20,8 +20,9 @@ export type CloudTokenKind = keyof typeof config.cloud.tokenTypes
  * @param kind the kind of token expected, matched against its `typ` header
  *
  * @docs Tries each candidate key the key resolver returns until the signature,
- * token type, issuer, audience, and age all check out, then returns the
- * payload. Throws when no trusted key validates the assertion.
+ * token type, issuer, audience, and age all check out, then refuses tokens a
+ * rotated key signed after its rotation. Returns the payload, and throws when
+ * no trusted key validates the assertion.
  *
  * @returns {Promise<JWTPayload>} the verified claims
  */
@@ -32,10 +33,11 @@ export const verifyAssertion = async (assertion: string, kind: CloudTokenKind): 
   if (keys.length === 0) throw new Error("No cloud verification keys available")
 
   // try every candidate, remembering the last failure for the throw
+  let verified: { payload: JWTPayload; kid?: string } | undefined
   let lastError: unknown
   for (const key of keys) {
     try {
-      const { payload } = await jwtVerify(assertion, key, {
+      const { payload, protectedHeader } = await jwtVerify(assertion, key, {
         algorithms: [config.cloud.alg],
         typ: config.cloud.tokenTypes[kind],
         issuer: config.cloud.issuer,
@@ -44,13 +46,22 @@ export const verifyAssertion = async (assertion: string, kind: CloudTokenKind): 
         clockTolerance: config.cloud.clockTolerance,
       })
 
-      return payload
+      verified = { payload, kid: protectedHeader.kid }
+      break
     } catch (error) {
       lastError = error
     }
   }
 
-  throw lastError ?? new Error("Cloud assertion verification failed")
+  if (!verified) throw lastError ?? new Error("Cloud assertion verification failed")
+
+  // a rotated key only vouches for what it signed before its rotation
+  // iat is always present, maxTokenAge requires it
+  if (isSignedAfterRotation(verified.payload.iat!, await keyRotatedAt(verified.kid))) {
+    throw new Error("Cloud assertion signed by a rotated key")
+  }
+
+  return verified.payload
 }
 // #endregion
 

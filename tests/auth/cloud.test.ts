@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import { verifyCloudAssertion, verifyPairAssertion } from "@/auth/cloud"
-import { resolveCandidateKeys } from "@/auth/keys"
+import { isSignedAfterRotation, resolveCandidateKeys, rotatedAtFrom } from "@/auth/keys"
 import { signAssertion, signUntrustedAssertion, tokenTypes } from "../helpers/jwt"
 
 describe("verifyPairAssertion", () => {
@@ -170,6 +170,44 @@ describe("verifyCloudAssertion", () => {
       issuedAt: Math.floor(Date.now() / 1000) + 10,
     })
     expect((await verifyCloudAssertion(assertion)).cloudUserId).toBe("usr_1")
+  })
+})
+
+describe("key rotation", () => {
+  const published = {
+    keys: [
+      { kty: "OKP", crv: "Ed25519", x: "new", kid: "cloud-2027", status: "active" },
+      { kty: "OKP", crv: "Ed25519", x: "old", kid: "cloud-2026", status: "rotated", rotated_at: 1_000 },
+      { kty: "OKP", crv: "Ed25519", x: "bad", kid: "cloud-2025", status: "rotated" },
+    ],
+  }
+
+  test("reads the rotation time of a rotated key", () => {
+    expect(rotatedAtFrom(published, "cloud-2026")).toBe(1_000)
+  })
+
+  test("treats active and unknown keys as not rotated", () => {
+    expect(rotatedAtFrom(published, "cloud-2027")).toBeUndefined()
+    expect(rotatedAtFrom(published, "cloud-1999")).toBeUndefined()
+    expect(rotatedAtFrom(undefined, "cloud-2026")).toBeUndefined()
+    expect(rotatedAtFrom(published, undefined)).toBeUndefined()
+  })
+
+  test("treats a rotated key without a time as rotated since the epoch", () => {
+    expect(rotatedAtFrom(published, "cloud-2025")).toBe(0)
+  })
+
+  test("accepts tokens a rotated key signed before its rotation", () => {
+    expect(isSignedAfterRotation(999, 1_000)).toBe(false)
+    expect(isSignedAfterRotation(1_000, 1_000)).toBe(false)
+  })
+
+  test("refuses tokens a rotated key signed after its rotation", () => {
+    expect(isSignedAfterRotation(1_001, 1_000)).toBe(true)
+  })
+
+  test("never refuses tokens from an active key", () => {
+    expect(isSignedAfterRotation(1_001, undefined)).toBe(false)
   })
 })
 

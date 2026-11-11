@@ -1,5 +1,5 @@
 import { createRemoteJWKSet, decodeProtectedHeader, importSPKI } from "jose"
-import type { JWSHeaderParameters } from "jose"
+import type { JSONWebKeySet, JWSHeaderParameters } from "jose"
 import { config } from "@/config"
 import { cloudAnchors } from "@/auth/anchors"
 
@@ -161,5 +161,75 @@ export const resolveCandidateKeys = async (token: string): Promise<CryptoKey[]> 
   }
 
   return keys
+}
+// #endregion
+
+// #region Rotation Status
+/**
+ * reads when `kid` was rotated out of a published key set
+ *
+ * @param jwks published key set
+ * @param kid key id to look up
+ *
+ * @docs Reads the rotation mark CoolerCloud publishes on a retired key: a
+ * `status` of `rotated` with a `rotated_at` NumericDate. A key marked rotated
+ * without a time is treated as rotated since the epoch, so it fails closed.
+ *
+ * @returns {number | undefined} rotation time in seconds, or undefined while active
+ */
+export const rotatedAtFrom = (
+  jwks: JSONWebKeySet | undefined,
+  kid: string | undefined
+): number | undefined => {
+  if (!jwks || !kid) return undefined
+
+  // published entry for this kid, custom members included
+  const key = jwks.keys.find((entry) => entry.kid === kid) as Record<string, unknown> | undefined
+  if (key?.status !== "rotated") return undefined
+
+  return typeof key.rotated_at === "number" ? key.rotated_at : 0
+}
+
+/**
+ * whether a token was signed by a key after that key was rotated out
+ *
+ * @param iat token issued-at, in seconds
+ * @param rotatedAt key rotation time, in seconds
+ *
+ * @docs A rotated key stays trusted for tokens it signed before its rotation,
+ * so in-flight tokens keep verifying, but anything it signs afterwards is
+ * refused. Paired with the maximum token age, a leaked retired key goes
+ * useless shortly after rotation.
+ *
+ * @returns {boolean} whether the token must be refused
+ */
+export const isSignedAfterRotation = (iat: number, rotatedAt: number | undefined): boolean =>
+  rotatedAt !== undefined && iat > rotatedAt
+
+// throttles key set refreshes, so an unreachable cloud costs one attempt per window
+const ROTATION_REFRESH_COOLDOWN_MS = 5 * 60 * 1000
+let lastRotationRefresh = 0
+
+/**
+ * resolves when `kid` was rotated out, refreshing a stale key set first
+ *
+ * @param kid key id that signed the token
+ *
+ * @docs Looks up the rotation mark for a key through jwks discovery, refreshing
+ * a missing or stale key set at most once per cooldown window. Without
+ * discovery (development, or disabled) nothing is ever marked rotated.
+ *
+ * @returns {Promise<number | undefined>} rotation time in seconds, or undefined while active
+ */
+export const keyRotatedAt = async (kid: string | undefined): Promise<number | undefined> => {
+  if (!remoteJWKS || !kid) return undefined
+
+  // refresh a missing or stale key set, throttled
+  if (!remoteJWKS.fresh && Date.now() - lastRotationRefresh > ROTATION_REFRESH_COOLDOWN_MS) {
+    lastRotationRefresh = Date.now()
+    await remoteJWKS.reload().catch((error) => console.error("jwks refresh failed:", error))
+  }
+
+  return rotatedAtFrom(remoteJWKS.jwks(), kid)
 }
 // #endregion
