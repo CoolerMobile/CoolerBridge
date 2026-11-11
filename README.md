@@ -150,6 +150,10 @@ The bridge verifies every pairing and access assertion against CoolerCloud's Ed2
 
 Keys do get rotated over time. To keep up without a redeploy, the bridge also performs standard [JWKS](https://datatracker.ietf.org/doc/html/rfc7517) discovery against CoolerCloud and trusts newly published keys (matched by their `kid`) over HTTPS. The baked-in key remains the offline root of trust, so a bridge that can't reach the discovery endpoint still verifies assertions signed by a known key.
 
+During a rotation, CoolerCloud keeps publishing the previous key, marked with `"status": "rotated"` and the time it was retired (`rotated_at`). The bridge keeps accepting it for assertions signed before that time, so nothing in flight breaks, but refuses anything it signs afterwards. Combined with a five-minute maximum assertion age, a retired key stops being useful shortly after it is rotated out.
+
+Every assertion also declares what it is for through its `typ` header (pairing, access, or contingency status), and the bridge only accepts each kind where it belongs, so an assertion issued for one purpose can never be replayed for another. Pairing is confirmed in both directions: CoolerCloud only treats a bridge as paired once the bridge itself reports which assertion completed the pairing, and that assertion matches one CoolerCloud signed.
+
 `CLOUD_PUBLIC_KEY` and `CLOUD_JWKS_URL` are advanced overrides for development and testing only, such as pointing a bridge at a non-production CoolerCloud or pinning trust to a single key. Leave both unset in normal use.
 
 ### Upgrading
