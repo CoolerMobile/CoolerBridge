@@ -9,6 +9,7 @@ describe("verifyPairAssertion", () => {
       sub: "usr_1",
       bridgeId: "cb_1",
       pairingId: "pair_1",
+      jti: "jti_1",
     })
 
     const result = await verifyPairAssertion(assertion)
@@ -17,6 +18,7 @@ describe("verifyPairAssertion", () => {
       cloudUserId: "usr_1",
       cloudBridgeId: "cb_1",
       pairingId: "pair_1",
+      jti: "jti_1",
     })
   })
 
@@ -55,6 +57,11 @@ describe("verifyPairAssertion", () => {
 
   test("rejects a token missing the pairing id claim", async () => {
     const assertion = await signAssertion({ sub: "usr_1", bridgeId: "cb_1", typ: tokenTypes.pair })
+    expect(verifyPairAssertion(assertion)).rejects.toThrow("Invalid cloud assertion")
+  })
+
+  test("rejects a token missing the assertion id", async () => {
+    const assertion = await signAssertion({ sub: "usr_1", bridgeId: "cb_1", pairingId: "pair_1", jti: null })
     expect(verifyPairAssertion(assertion)).rejects.toThrow("Invalid cloud assertion")
   })
 
@@ -229,6 +236,7 @@ describe("trust anchors", () => {
       bridgeId: "cb_1",
       pairingId: "pair_1",
       kid: "cloud-2026",
+      jti: "jti_kid",
     })
 
     const result = await verifyPairAssertion(assertion)
@@ -237,6 +245,7 @@ describe("trust anchors", () => {
       cloudUserId: "usr_1",
       cloudBridgeId: "cb_1",
       pairingId: "pair_1",
+      jti: "jti_kid",
     })
   })
 

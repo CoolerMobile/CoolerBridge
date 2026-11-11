@@ -2,7 +2,7 @@ import { Hono } from "hono"
 import { db } from "@/db"
 import { cloudLinks, pairingChallenges } from "@/db/schema"
 import { zValidator } from "@hono/zod-validator"
-import { completePairingSchema } from "@/schemas/bridge"
+import { completePairingSchema, pairingStatusParamsSchema } from "@/schemas/bridge"
 import { and, eq, gt, isNull } from "drizzle-orm"
 import { verifyPairAssertion } from "@/auth/cloud"
 import { codeDigest, generateCode } from "@/auth/utils"
@@ -46,10 +46,42 @@ pairingRoutes.post("/", async (context) => {
 })
 // #endregion
 
+// #region Pairing Status Route
+/**
+ * @docs Reports a pairing challenge's state, pending, completed, or expired.
+ * Once completed it also returns the id (`jti`) of the cloud assertion that
+ * consumed it, which CoolerCloud matches against the assertion it signed before
+ * it considers the bridge paired.
+ */
+// pairing status
+pairingRoutes.get("/:id", zValidator("param", pairingStatusParamsSchema), async (context) => {
+  const { id } = context.req.valid("param")
+
+  // pairing challenge
+  const pairing = await db.query.pairingChallenges.findFirst({
+    where: eq(pairingChallenges.id, id),
+  })
+
+  // unknown challenge
+  if (!pairing) return context.json({ error: "Pairing not found" }, 404)
+
+  // derive state, consumption wins over expiry
+  const status = pairing.usedAt ? "completed" : pairing.expiresAt <= new Date() ? "expired" : "pending"
+
+  return context.json({
+    id: pairing.id,
+    status,
+    jti: status === "completed" ? pairing.assertionJti : null,
+  })
+})
+// #endregion
+
 // #region Complete Pairing Route
 /**
  * @docs Completes pairing by matching the code to an unused, unexpired
- * challenge, verifying the cloud assertion, and creating the cloud link.
+ * challenge, verifying the cloud assertion, and creating the cloud link. The
+ * challenge records the assertion's id, so CoolerCloud can confirm the round
+ * trip through the pairing status route.
  * Pairing again from the same account (such as re-scanning the pairing QR
  * code) keeps the existing link, restoring it if it was revoked, while a
  * bridge already linked to another account is refused.
@@ -131,11 +163,12 @@ pairingRoutes.post("/complete", zValidator("json", completePairingSchema), async
           })
           .returning()
 
-    // update code usage
+    // update code usage, recording the consuming assertion for cloud confirmation
     const [consumed] = await tx
       .update(pairingChallenges)
       .set({
         usedAt: new Date(),
+        assertionJti: cloud.jti,
       })
       .where(
         and(

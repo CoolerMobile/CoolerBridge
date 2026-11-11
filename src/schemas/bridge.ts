@@ -12,6 +12,16 @@ export const completePairingSchema = z.object({
 })
 // #endregion
 
+// #region Pairing Status Params Schema
+/**
+ * @docs Route params for reading a pairing challenge's status, the challenge
+ * id issued when it was created.
+ */
+export const pairingStatusParamsSchema = z.object({
+  id: z.uuid(),
+})
+// #endregion
+
 // #region Auth Variables
 /**
  * @docs Hono context variables set by the auth middleware, exposing the active

@@ -71,7 +71,9 @@ export const verifyAssertion = async (assertion: string, kind: CloudTokenKind): 
  *
  * @param assertion assertion to verify
  *
- * @docs Verifies a pairing assertion and returns its normalized claims.
+ * @docs Verifies a pairing assertion and returns its normalized claims,
+ * including the assertion id (`jti`) CoolerCloud later uses to confirm the
+ * pairing with the bridge.
  */
 export const verifyPairAssertion = async (assertion: string): Promise<CloudPairingAssertion> => {
   // verify & extract payload
@@ -81,7 +83,9 @@ export const verifyPairAssertion = async (assertion: string): Promise<CloudPairi
   if (
     typeof payload.sub !== "string" ||
     typeof payload.bridgeId !== "string" ||
-    typeof payload.pairingId !== "string"
+    typeof payload.pairingId !== "string" ||
+    typeof payload.jti !== "string" ||
+    !payload.jti
   ) {
     throw new Error("Invalid cloud assertion")
   }
@@ -91,6 +95,7 @@ export const verifyPairAssertion = async (assertion: string): Promise<CloudPairi
     cloudUserId: payload.sub,
     cloudBridgeId: payload.bridgeId,
     pairingId: payload.pairingId,
+    jti: payload.jti,
   }
 }
 // #endregion

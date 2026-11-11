@@ -67,8 +67,9 @@ export const events = pgTable("events", {
 
 // #region Pairing Challenges Table
 /**
- * @docs Short-lived pairing challenges, tracking a code digest with its expiry
- * and single-use consumption timestamp.
+ * @docs Short-lived pairing challenges, tracking a code digest with its expiry,
+ * single-use consumption timestamp, and the id of the cloud assertion that
+ * consumed it.
  */
 // pairing challenges table
 export const pairingChallenges = pgTable("pairing_challenges", {
@@ -80,6 +81,9 @@ export const pairingChallenges = pgTable("pairing_challenges", {
   usedAt: timestamp("used_at", {
     withTimezone: true,
   }),
+  // jti of the consuming assertion, reported back to the cloud for confirmation
+  // nullable and not unique, so the column is added to populated tables without prompts
+  assertionJti: text("assertion_jti"),
   createdAt: timestamp("created_at", {
     withTimezone: true,
   })

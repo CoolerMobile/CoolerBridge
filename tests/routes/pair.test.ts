@@ -4,7 +4,7 @@ import app from "@/index"
 import { db } from "@/db"
 import { cloudLinks, pairingChallenges } from "@/db/schema"
 import { resetDb } from "../helpers/db"
-import { signPairAssertion } from "../helpers/jwt"
+import { signAssertion, signPairAssertion } from "../helpers/jwt"
 
 beforeEach(resetDb)
 
@@ -33,6 +33,53 @@ describe("POST /v1/pairing", () => {
     expect(body.id).toMatch(/^[0-9a-f-]{36}$/)
     expect(body.code).toMatch(/^[A-Z2-9]{4}-[A-Z2-9]{4}$/)
     expect(new Date(body.expiresAt).getTime()).toBeGreaterThan(Date.now())
+  })
+})
+
+describe("GET /v1/pairing/:id", () => {
+  const status = (id: string) => app.request(`/v1/pairing/${id}`)
+
+  test("reports a fresh challenge as pending, without an assertion id", async () => {
+    const challenge = await createChallenge()
+
+    const res = await status(challenge.id)
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({ id: challenge.id, status: "pending", jti: null })
+  })
+
+  test("reports a consumed challenge as completed, with the consuming assertion id", async () => {
+    const challenge = await createChallenge()
+    const assertion = await signAssertion({
+      sub: "usr_test",
+      bridgeId: "cb_status_1",
+      pairingId: challenge.id,
+      jti: "jti_status_1",
+    })
+    expect((await complete(challenge.code, assertion)).status).toBe(200)
+
+    expect(await (await status(challenge.id)).json()).toEqual({
+      id: challenge.id,
+      status: "completed",
+      jti: "jti_status_1",
+    })
+  })
+
+  test("reports an unused, past-expiry challenge as expired", async () => {
+    const challenge = await createChallenge()
+    await db
+      .update(pairingChallenges)
+      .set({ expiresAt: new Date(Date.now() - 1000) })
+      .where(eq(pairingChallenges.id, challenge.id))
+
+    expect((await (await status(challenge.id)).json()).status).toBe("expired")
+  })
+
+  test("returns 404 for an unknown challenge", async () => {
+    expect((await status(crypto.randomUUID())).status).toBe(404)
+  })
+
+  test("rejects an id that is not a uuid", async () => {
+    expect((await status("not-a-uuid")).status).toBe(400)
   })
 })
 
