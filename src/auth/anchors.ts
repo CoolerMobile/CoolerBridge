@@ -47,7 +47,7 @@ const readAnchorPem = (file: string) => Bun.file(new URL(`./anchors/${file}`, im
 export const cloudAnchors: CloudAnchor[] = [
   {
     kid: "cloud-2026",
-    pem: await readAnchorPem("cloud-2026.pem"),
+    pem: await readAnchorPem("cloud-2026-11-11.pem"),
   },
 ]
 // #endregion
