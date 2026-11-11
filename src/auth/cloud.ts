@@ -2,7 +2,7 @@ import { jwtVerify } from "jose"
 import type { JWTPayload } from "jose"
 import { config } from "@/config"
 import { isSignedAfterRotation, keyRotatedAt, resolveCandidateKeys } from "@/auth/keys"
-import { CloudPairingAssertion } from "@/auth/assert"
+import { CloudPairingAssertion, CloudRevokeAssertion } from "@/auth/assert"
 
 // #region Token Kind
 /**
@@ -96,6 +96,33 @@ export const verifyPairAssertion = async (assertion: string): Promise<CloudPairi
     cloudBridgeId: payload.bridgeId,
     pairingId: payload.pairingId,
     jti: payload.jti,
+  }
+}
+// #endregion
+
+// #region Verify Revoke Assertion
+/**
+ * verifies revoke `assertion` against the cloud trust anchors
+ *
+ * @param assertion assertion to verify
+ *
+ * @docs Verifies a revoke assertion, which CoolerCloud sends when a bridge is
+ * unpaired from the dashboard or the app, and returns the user and bridge it
+ * names.
+ */
+export const verifyRevokeAssertion = async (assertion: string): Promise<CloudRevokeAssertion> => {
+  // verify & extract payload
+  const payload = await verifyAssertion(assertion, "revoke")
+
+  // validate payload data
+  if (typeof payload.sub !== "string" || typeof payload.bridgeId !== "string") {
+    throw new Error("Invalid revoke assertion")
+  }
+
+  // return normalized assertion
+  return {
+    cloudUserId: payload.sub,
+    cloudBridgeId: payload.bridgeId,
   }
 }
 // #endregion

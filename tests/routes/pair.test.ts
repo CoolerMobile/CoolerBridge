@@ -2,9 +2,15 @@ import { beforeEach, describe, expect, test } from "bun:test"
 import { eq } from "drizzle-orm"
 import app from "@/index"
 import { db } from "@/db"
-import { cloudLinks, pairingChallenges } from "@/db/schema"
-import { resetDb } from "../helpers/db"
-import { signAssertion, signPairAssertion } from "../helpers/jwt"
+import { cloudLinks, devices, pairingChallenges, sessions } from "@/db/schema"
+import { resetDb, seedAuthedSession, seedDevice } from "../helpers/db"
+import {
+  signAccessAssertion,
+  signAssertion,
+  signPairAssertion,
+  signUntrustedAssertion,
+  tokenTypes,
+} from "../helpers/jwt"
 
 beforeEach(resetDb)
 
@@ -190,5 +196,73 @@ describe("POST /v1/pairing/complete", () => {
       body: JSON.stringify({ code: "ABCD-EFGH" }),
     })
     expect(res.status).toBe(400)
+  })
+})
+
+describe("POST /v1/pairing/revoke", () => {
+  const revoke = (assertion: string) =>
+    app.request("/v1/pairing/revoke", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ assertion }),
+    })
+
+  const signRevoke = (cloudBridgeId: string, sub = "usr_test") =>
+    signAssertion({ sub, bridgeId: cloudBridgeId, typ: tokenTypes.revoke })
+
+  test("revokes the link with its sessions and devices, cutting the app off", async () => {
+    const { bridge, cloudLink, session, authHeader } = await seedAuthedSession(["devices:read"])
+    const device = await seedDevice(cloudLink.id)
+
+    const res = await revoke(await signRevoke(bridge.id))
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({ revoked: true })
+
+    const [link] = await db.select().from(cloudLinks).where(eq(cloudLinks.id, cloudLink.id))
+    const [ended] = await db.select().from(sessions).where(eq(sessions.id, session.id))
+    const [stopped] = await db.select().from(devices).where(eq(devices.id, device.id))
+    expect(link!.revokedAt).not.toBeNull()
+    expect(ended!.revokedAt).not.toBeNull()
+    expect(stopped!.revokedAt).not.toBeNull()
+
+    // the app's bridge session no longer works
+    expect((await app.request("/v1/devices", { headers: authHeader })).status).toBe(401)
+  })
+
+  test("leaves another account's link alone", async () => {
+    const { bridge, cloudLink } = await seedAuthedSession()
+
+    const res = await revoke(await signRevoke(bridge.id, "usr_someone_else"))
+    expect(await res.json()).toEqual({ revoked: false })
+
+    const [link] = await db.select().from(cloudLinks).where(eq(cloudLinks.id, cloudLink.id))
+    expect(link!.revokedAt).toBeNull()
+  })
+
+  test("succeeds without changes when the link is already gone", async () => {
+    const { bridge } = await seedAuthedSession()
+    await revoke(await signRevoke(bridge.id))
+
+    const res = await revoke(await signRevoke(bridge.id))
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({ revoked: false })
+  })
+
+  test("refuses any other kind of cloud token", async () => {
+    const { bridge, cloudLink } = await seedAuthedSession()
+
+    const res = await revoke(await signAccessAssertion(bridge.id, ["devices:read"]))
+    expect(res.status).toBe(401)
+
+    const [link] = await db.select().from(cloudLinks).where(eq(cloudLinks.id, cloudLink.id))
+    expect(link!.revokedAt).toBeNull()
+  })
+
+  test("refuses an untrusted signature", async () => {
+    const { bridge } = await seedAuthedSession()
+    const res = await revoke(
+      await signUntrustedAssertion({ sub: "usr_test", bridgeId: bridge.id, typ: tokenTypes.revoke })
+    )
+    expect(res.status).toBe(401)
   })
 })

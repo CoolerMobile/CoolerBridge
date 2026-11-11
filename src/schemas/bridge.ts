@@ -12,6 +12,16 @@ export const completePairingSchema = z.object({
 })
 // #endregion
 
+// #region Revoke Pairing Schema
+/**
+ * @docs Request body for revoking a pairing, carrying the cloud-signed revoke
+ * assertion.
+ */
+export const revokePairingSchema = z.object({
+  assertion: z.string().min(1),
+})
+// #endregion
+
 // #region Pairing Status Params Schema
 /**
  * @docs Route params for reading a pairing challenge's status, the challenge

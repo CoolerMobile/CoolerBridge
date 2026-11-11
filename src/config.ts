@@ -32,6 +32,7 @@ export const config = {
       pair: "cooler-pair+jwt",
       access: "cooler-access+jwt",
       status: "cooler-status+jwt",
+      revoke: "cooler-revoke+jwt",
     },
     // longest lifetime the cloud gives any token, and the clock skew tolerated
     maxTokenAge: "5m",

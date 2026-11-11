@@ -11,3 +11,14 @@ export type CloudPairingAssertion = {
   jti: string
 }
 // #endregion
+
+// #region Cloud Revoke Assertion
+/**
+ * @docs The verified claims carried by a cloud revoke assertion: the cloud user
+ * and the bridge they unpaired.
+ */
+export type CloudRevokeAssertion = {
+  cloudUserId: string
+  cloudBridgeId: string
+}
+// #endregion
