@@ -3,7 +3,7 @@ import { db } from "@/db"
 import { cloudLinks, pairingChallenges } from "@/db/schema"
 import { zValidator } from "@hono/zod-validator"
 import { completePairingSchema, pairingStatusParamsSchema } from "@/schemas/bridge"
-import { and, eq, gt, isNull } from "drizzle-orm"
+import { and, eq, gt, isNull, TransactionRollbackError } from "drizzle-orm"
 import { verifyPairAssertion } from "@/auth/cloud"
 import { codeDigest, generateCode } from "@/auth/utils"
 
@@ -134,57 +134,59 @@ pairingRoutes.post("/complete", zValidator("json", completePairingSchema), async
     )
   }
 
-  // existing link for this bridge
-  const existing = await db.query.cloudLinks.findFirst({
-    where: eq(cloudLinks.bridgeId, cloud.cloudBridgeId),
-  })
-
-  // a bridge belongs to a single account
-  if (existing && existing.cloudUserId !== cloud.cloudUserId) {
-    return context.json(
-      {
-        error: "Bridge is already linked to another account",
-      },
-      409
-    )
-  }
-
   // create link & update code usage
-  const link = await db.transaction(async (tx) => {
-    // set up link
-    // a re-pair from the same account keeps the existing link
-    const [created] = existing
-      ? await tx.update(cloudLinks).set({ revokedAt: null }).where(eq(cloudLinks.id, existing.id)).returning()
-      : await tx
-          .insert(cloudLinks)
-          .values({
-            cloudUserId: cloud.cloudUserId,
-            bridgeId: cloud.cloudBridgeId,
-          })
-          .returning()
+  //
+  // a single upsert claims the bridge, so concurrent completions can never race
+  // into a duplicate; a re-pair from the same account keeps (and restores) its
+  // link, while a bridge linked to another account matches no row
+  const outcome = await db
+    .transaction(async (tx) => {
+      const [link] = await tx
+        .insert(cloudLinks)
+        .values({
+          cloudUserId: cloud.cloudUserId,
+          bridgeId: cloud.cloudBridgeId,
+        })
+        .onConflictDoUpdate({
+          target: cloudLinks.bridgeId,
+          set: { revokedAt: null },
+          setWhere: eq(cloudLinks.cloudUserId, cloud.cloudUserId),
+        })
+        .returning()
 
-    // update code usage, recording the consuming assertion for cloud confirmation
-    const [consumed] = await tx
-      .update(pairingChallenges)
-      .set({
-        usedAt: new Date(),
-        assertionJti: cloud.jti,
-      })
-      .where(
-        and(
-          eq(pairingChallenges.id, pairing.id),
-          isNull(pairingChallenges.usedAt),
-          gt(pairingChallenges.expiresAt, new Date())
+      // a bridge belongs to a single account
+      if (!link) return { error: "Bridge is already linked to another account" } as const
+
+      // update code usage, recording the consuming assertion for cloud confirmation
+      const [consumed] = await tx
+        .update(pairingChallenges)
+        .set({
+          usedAt: new Date(),
+          assertionJti: cloud.jti,
+        })
+        .where(
+          and(
+            eq(pairingChallenges.id, pairing.id),
+            isNull(pairingChallenges.usedAt),
+            gt(pairingChallenges.expiresAt, new Date())
+          )
         )
-      )
-      .returning({ id: pairingChallenges.id })
+        .returning({ id: pairingChallenges.id })
 
-    // validate consumed state
-    if (!consumed) throw Error("Pairing challenge already consumed")
+      // consumed concurrently, undo the link change with the rest of the transaction
+      if (!consumed) tx.rollback()
 
-    // return created link
-    return created
-  })
+      return { link } as const
+    })
+    .catch((error) => {
+      if (error instanceof TransactionRollbackError)
+        return { error: "Pairing code was already used" } as const
+      throw error
+    })
+
+  // refused, nothing was written
+  if ("error" in outcome) return context.json({ error: outcome.error }, 409)
+  const { link } = outcome
 
   // return link status
   return context.json(

@@ -146,6 +146,19 @@ describe("POST /v1/pairing/complete", () => {
     expect(links).toHaveLength(1)
   })
 
+  test("links once when the same account completes two pairings at the same time", async () => {
+    // a double scan runs two full pairings side by side
+    const [first, second] = await Promise.all([createChallenge(), createChallenge()])
+    const [a, b] = await Promise.all([
+      complete(first.code, await signPairAssertion(first.id, "cb_pair_race")),
+      complete(second.code, await signPairAssertion(second.id, "cb_pair_race")),
+    ])
+
+    expect([a.status, b.status]).toEqual([200, 200])
+    const links = await db.select().from(cloudLinks).where(eq(cloudLinks.bridgeId, "cb_pair_race"))
+    expect(links).toHaveLength(1)
+  })
+
   test("restores a revoked link when the same account pairs again", async () => {
     const first = await createChallenge()
     await complete(first.code, await signPairAssertion(first.id, "cb_pair_7"))
