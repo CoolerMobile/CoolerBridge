@@ -5,12 +5,15 @@ import { z } from "zod"
  * dependent on coolify's documented
  * webhook payload reference
  *
+ * unknown fields are kept so every payload detail reaches the event metadata
+ *
  * @see https://coolify.io/docs/core/notifications/channels/webhook/payload-reference
  *
  * @docs Validates an incoming Coolify webhook payload, modeling the documented
- * notification fields that vary by event type.
+ * notification fields that vary by event type. Fields outside the model are
+ * kept, so every detail Coolify sends is stored with the event.
  */
-export const coolifyWebhookSchema = z.object({
+export const coolifyWebhookSchema = z.looseObject({
   success: z.boolean(),
   event: z.string(),
   message: z.string(),

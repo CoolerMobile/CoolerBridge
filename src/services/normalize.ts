@@ -156,6 +156,39 @@ const resolveResource = (
 }
 // #endregion
 
+// #region Collect Metadata
+/**
+ * keeps every payload field outside the common envelope as metadata
+ *
+ * keys are camel cased and a `_uuid` suffix becomes `Id`, so `deployment_uuid`
+ * is stored as `deploymentId`
+ *
+ * @param payload coolify webhook payload
+ *
+ * @returns {CoolerEvent["metadata"]} metadata or undefined when the payload carries none
+ *
+ * @docs Keeps every field Coolify sends beyond `success`, `event` and `message`
+ * as event metadata, with camel cased keys and `_uuid` suffixes renamed to `Id`
+ * (for example `deployment_uuid` becomes `deploymentId`).
+ */
+export const collectMetadata = (payload: CoolifyWebhook): CoolerEvent["metadata"] => {
+  const entries = Object.entries(payload)
+    .filter(([key, value]) => !["success", "event", "message"].includes(key) && value != null)
+    .map(([key, value]) => {
+      const name = key
+        .replace(/_uuid$/, "_id")
+        .replace(/_+([a-z0-9])/g, (_, letter: string) => letter.toUpperCase())
+
+      return [name, value] as const
+    })
+
+  // nothing beyond the envelope
+  if (entries.length === 0) return undefined
+
+  return Object.fromEntries(entries)
+}
+// #endregion
+
 // #region Normalize Event
 /**
  * normalizes coolify event payloads into cooler-native events
@@ -173,7 +206,7 @@ export const normalizeEvent = (payload: CoolifyWebhook): CoolerEvent => {
     message: payload.message,
     createdAt: new Date().toISOString(),
     resource: resolveResource(payload, known?.resource),
-    metadata: payload.deployment_uuid ? { deploymentId: payload.deployment_uuid } : undefined,
+    metadata: collectMetadata(payload),
   }
 }
 // #endregion

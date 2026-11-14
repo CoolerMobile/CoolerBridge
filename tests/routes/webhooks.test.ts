@@ -40,7 +40,30 @@ describe("POST /v1/webhooks/coolify/:secret", () => {
     expect(event!.severity).toBe("success")
     expect(event!.resourceType).toBe("application")
     expect(event!.resourceId).toBe("app-1")
-    expect(event!.metadata).toEqual({ deploymentId: "dep-1" })
+    expect(event!.metadata).toEqual({ applicationId: "app-1", applicationName: "web", deploymentId: "dep-1" })
+  })
+
+  test("stores payload fields outside the schema as metadata", async () => {
+    const bridge = await seedBridge("wh-extra")
+
+    const res = await postWebhook("wh-extra", {
+      success: false,
+      event: "backup_failed",
+      message: "Database backup failed",
+      database_uuid: "db-1",
+      database_name: "postgres",
+      error_output: "disk full",
+    })
+
+    expect(res.status).toBe(202)
+    const [event] = await db.select().from(events).where(eq(events.bridgeId, bridge.id))
+    expect(event!.title).toBe("Backup failed")
+    expect(event!.resourceType).toBe("database")
+    expect(event!.metadata).toEqual({
+      databaseId: "db-1",
+      databaseName: "postgres",
+      errorOutput: "disk full",
+    })
   })
 
   test("normalizes a failed deployment to an error event", async () => {

@@ -45,14 +45,14 @@ describe("coolifyWebhookSchema", () => {
     expect(result.success).toBe(false)
   })
 
-  test("strips unknown keys by default", () => {
+  test("keeps unknown keys", () => {
     const parsed = coolifyWebhookSchema.parse({
       success: true,
       event: "x",
       message: "y",
-      not_a_field: "dropped",
+      not_a_field: "kept",
     })
 
-    expect(parsed).not.toHaveProperty("not_a_field")
+    expect(parsed).toHaveProperty("not_a_field", "kept")
   })
 })

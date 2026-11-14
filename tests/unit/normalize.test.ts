@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { coolifyEvents, humanizeEvent, normalizeEvent } from "@/services/normalize"
+import { collectMetadata, coolifyEvents, humanizeEvent, normalizeEvent } from "@/services/normalize"
 import type { CoolifyWebhook } from "@/schemas/coolify"
 
 const base = (overrides: Partial<CoolifyWebhook> = {}): CoolifyWebhook => ({
@@ -26,7 +26,7 @@ describe("normalizeEvent", () => {
     expect(result.title).toBe("Deployment successful")
     expect(result.message).toBe("it worked")
     expect(result.resource).toEqual({ id: "app-1", name: "web", type: "application" })
-    expect(result.metadata).toEqual({ deploymentId: "dep-1" })
+    expect(result.metadata).toEqual({ applicationId: "app-1", applicationName: "web", deploymentId: "dep-1" })
     expect(() => new Date(result.createdAt).toISOString()).not.toThrow()
   })
 
@@ -46,7 +46,7 @@ describe("normalizeEvent", () => {
     expect(result.title).toBe("Deployment failed")
     expect(result.message).toBe("boom")
     expect(result.resource).toEqual({ id: "app-2", name: "api", type: "application" })
-    expect(result.metadata).toBeUndefined()
+    expect(result.metadata).toEqual({ applicationId: "app-2", applicationName: "api" })
   })
 
   test("maps backup_failed to an error database event", () => {
@@ -111,6 +111,37 @@ describe("normalizeEvent", () => {
     expect(result.type).toBe("coolify.some_new_thing")
     expect(result.severity).toBe("error")
     expect(result.title).toBe("Some new thing")
+  })
+})
+
+describe("collectMetadata", () => {
+  test("keeps every field beyond the envelope with camel cased keys", () => {
+    const metadata = collectMetadata(
+      base({
+        event: "backup_failed",
+        database_uuid: "db-1",
+        database_type: "postgresql",
+        error_output: "disk full",
+        s3_storage_url: "https://s3",
+        updates: [{ name: "openssl" }],
+        consecutive_failures: 3,
+      } as Partial<CoolifyWebhook>)
+    )
+
+    expect(metadata).toEqual({
+      databaseId: "db-1",
+      databaseType: "postgresql",
+      errorOutput: "disk full",
+      s3StorageUrl: "https://s3",
+      updates: [{ name: "openssl" }],
+      consecutiveFailures: 3,
+    })
+  })
+
+  test("drops empty values", () => {
+    expect(
+      collectMetadata(base({ fqdn: undefined, action: null } as Partial<CoolifyWebhook>))
+    ).toBeUndefined()
   })
 })
 
