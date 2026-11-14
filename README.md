@@ -22,8 +22,8 @@ In short:
 
 1. Coolify sends a notification to your CoolerBridge webhook URL.
 2. CoolerBridge normalizes the payload and stores it as an event, scoped to the originating bridge.
-3. Linked devices are notified over push through [Expo](https://expo.dev), which fans out to APNs (iOS) and FCM (Android).
-4. Cooler reads the event through CoolerBridge's own API.
+3. Linked devices receive a data-only push through [Expo](https://expo.dev), which fans out to APNs (iOS) and FCM (Android). It carries the event id, not its content.
+4. Cooler fetches the event through CoolerBridge's own API and shows the notification itself.
 
 ### Features
 
@@ -166,7 +166,11 @@ If you set `CLOUD_PUBLIC_KEY` on an older version, remove it from your `.env` so
 
 Push notifications are handled for you. There is nothing to set up, paste, or maintain on the bridge for them to work.
 
-When an event is ingested, the bridge forwards it to [Expo](https://expo.dev), which fans it out to APNs (iOS) and FCM (Android) and delivers it to your linked devices. The push project and its credentials (APNs key, FCM key, and any access token) live in Cooler, not in your self-hosted bridge, so you never touch a push provider.
+When an event is ingested, the bridge sends a data-only push through [Expo](https://expo.dev), which fans it out to APNs (iOS) and FCM (Android) and delivers it to your linked devices. The push carries only the event and bridge ids, never the event's title, message or details, so neither Expo, Apple nor Google can read what happened. Cooler wakes up, fetches the event from your bridge over an authenticated request and presents the notification on the device.
+
+Every field Coolify sends is stored with the event, so the app has the full context (resource, error output, disk usage and so on) without any of it leaving your bridge in a push.
+
+The push project and its credentials (APNs key, FCM key, and any access token) live in Cooler, not in your self-hosted bridge, so you never touch a push provider.
 
 In practice, once Coolify is pointed at your bridge and your devices are linked through your CoolerCloud account, notifications simply arrive.
 

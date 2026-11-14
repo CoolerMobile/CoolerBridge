@@ -5,7 +5,7 @@ import { db } from "@/db"
 import { devices } from "@/db/schema"
 import type { Device, Event } from "@/schemas/cooler"
 import { dispatchEvent } from "@/services/notifications/dispatch"
-import { expoPushProvider } from "@/services/notifications/expo"
+import { buildMessage, expoPushProvider } from "@/services/notifications/expo"
 import { resetDb, seedAuthedSession, seedDevice } from "../helpers/db"
 
 // stub expo's network call and observe the error logger
@@ -49,6 +49,22 @@ const makeDevice = (overrides: Partial<Device> = {}): Device => ({
   ...overrides,
 })
 
+describe("buildMessage", () => {
+  test("carries only identifiers, never event content", () => {
+    const device = makeDevice()
+    const event = { ...makeEvent(crypto.randomUUID()), metadata: { errorOutput: "secret" } }
+
+    const message = buildMessage(device, event)
+
+    expect(message).toEqual({
+      to: device.pushToken,
+      priority: "high",
+      _contentAvailable: true,
+      data: { type: "event.available", eventId: event.id, bridgeId: event.bridgeId },
+    })
+  })
+})
+
 describe("expoPushProvider.send", () => {
   test("skips devices without a valid expo token", async () => {
     const deliveries = await expoPushProvider.send(
@@ -82,9 +98,7 @@ describe("expoPushProvider.send", () => {
     const { cloudLink } = await seedAuthedSession()
     const device = await seedDevice(cloudLink.id)
 
-    send.mockResolvedValue([
-      { status: "error", message: "gone", details: { error: "DeviceNotRegistered" } },
-    ])
+    send.mockResolvedValue([{ status: "error", message: "gone", details: { error: "DeviceNotRegistered" } }])
 
     await expoPushProvider.send(
       [makeDevice({ id: device.id, pushToken: device.pushToken })],

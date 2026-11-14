@@ -21,19 +21,24 @@ const expo = new Expo()
 /**
  * builds an expo push message for a device
  *
+ * the message is data only and never carries event content, the app fetches
+ * the event from the bridge by id and presents it locally
+ *
  * @param device device to deliver to
  * @param event cooler event to deliver
  *
  * @returns {ExpoPushMessage} expo push message
  *
- * @docs Builds an Expo push message for a device from a Cooler event.
+ * @docs Builds a data-only Expo push message for a device. It carries only the
+ * event and bridge ids, never the event content, so Expo, APNs and FCM never
+ * see what happened. The app fetches the event from the bridge and presents it
+ * itself.
  */
-const buildMessage = (device: Device, event: Event): ExpoPushMessage => ({
+export const buildMessage = (device: Device, event: Event): ExpoPushMessage => ({
   to: device.pushToken,
-  title: event.title,
-  body: event.message,
-  sound: "default",
   priority: "high",
+  // wakes the app in the background on iOS
+  _contentAvailable: true,
   data: {
     type: "event.available",
     eventId: event.id,
