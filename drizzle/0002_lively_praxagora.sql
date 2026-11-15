@@ -1,0 +1,2 @@
+ALTER TABLE "pairing_challenges" RENAME COLUMN "code_hash" TO "code_digest";--> statement-breakpoint
+ALTER TABLE "pairing_challenges" ADD CONSTRAINT "pairing_challenges_code_digest_unique" UNIQUE("code_digest");
