@@ -8,13 +8,14 @@ export type CoolifyPermission = "read" | "read:sensitive" | "write" | "deploy" |
 // #region Bridge Scope Type
 /**
  * @docs The native scopes a bridge session can hold, covering events, devices,
- * sessions, and Coolify access.
+ * sessions, test pushes, and Coolify access.
  */
 export type BridgeScope =
   | "events:read"
   | "devices:read"
   | "devices:write"
   | "session:revoke"
+  | "push:test"
   | "coolify:read"
   | "coolify:read:sensitive"
   | "coolify:write"
@@ -31,6 +32,7 @@ const bridgeScopes: ReadonlySet<string> = new Set<BridgeScope>([
   "devices:read",
   "devices:write",
   "session:revoke",
+  "push:test",
   "coolify:read",
   "coolify:read:sensitive",
   "coolify:write",

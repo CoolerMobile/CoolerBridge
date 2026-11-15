@@ -14,6 +14,7 @@ describe("isBridgeScope", () => {
       "devices:read",
       "devices:write",
       "session:revoke",
+      "push:test",
       "coolify:read",
       "coolify:read:sensitive",
       "coolify:write",
@@ -28,6 +29,7 @@ describe("isBridgeScope", () => {
   test("rejects unknown scopes", () => {
     expect(isBridgeScope("coolify:root")).toBe(false)
     expect(isBridgeScope("events:write")).toBe(false)
+    expect(isBridgeScope("push:send")).toBe(false)
     expect(isBridgeScope("")).toBe(false)
     expect(isBridgeScope("EVENTS:READ")).toBe(false)
   })
