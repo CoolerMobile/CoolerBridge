@@ -179,6 +179,8 @@ The push project and its credentials (APNs key, FCM key, and any access token) l
 
 In practice, once Coolify is pointed at your bridge and your devices are linked through your CoolerCloud account, notifications simply arrive.
 
+To check that they do, send a test notification from your CoolerCloud dashboard. The bridge stores a "Test notification" event and pushes it to every linked device, ignoring quiet hours and muted categories, then reports how each delivery went. The test shows up in Cooler like any other event.
+
 ## Development
 
 CoolerBridge is built with [Bun](https://bun.sh), [Hono](https://hono.dev), and [Drizzle ORM](https://orm.drizzle.team) on PostgreSQL.
