@@ -231,13 +231,16 @@ bun run release
 
 The workflow builds what is on GitHub, so the script first checks that your working tree is clean and your branch is in step with `origin`. It offers to push any unpushed commits (or fast-forward a branch that is behind) and stops if the tree is dirty or the branch has diverged. Set `PREFLIGHT_YES=1` to accept those offers without a prompt. `bun run gen:docs` runs the same check before dispatching the docs workflow.
 
-It then dispatches the `Release` workflow on the current branch, which:
+Releases are cut from `main` only, so the script stops on any other branch. It then dispatches the `Release` workflow, which:
 
 1. Runs the test suite.
 2. Inspects the commits since the last release and computes the next version (a `feat` bumps the minor, a `fix` the patch, and a breaking change the major).
 3. Updates the version in `package.json`, commits it, and tags the release.
 4. Builds and pushes the container image to the GitHub Container Registry.
 5. Publishes a GitHub release with a grouped changelog of the included changes.
+6. Redeploys the docs, so they document the new version.
+
+Pushes to `main` also redeploy the docs. To redeploy them on their own, run `bun run gen:docs`.
 
 The `bun run release` script requires the [GitHub CLI](https://cli.github.com) to be installed and authenticated.
 
