@@ -1,3 +1,6 @@
+import type { DevicePreferences } from "@/schemas/bridge"
+import type { EventCategory } from "@/services/normalize"
+
 // #region Operating System
 /**
  * @docs The mobile platforms a linked device can run, either iOS or Android.
@@ -61,6 +64,7 @@ export type Device = {
   cloudLinkId: string
   platform: OperatingSystem
   pushToken: string
+  preferences?: DevicePreferences | null
   createdAt: Date
   lastSeenAt: Date | null
 }
@@ -82,6 +86,7 @@ export type Event = {
   resourceId?: string
   resourceName?: string
   metadata?: unknown
+  category?: EventCategory
   createdAt: Date
 }
 // #endregion

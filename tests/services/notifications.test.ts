@@ -36,6 +36,8 @@ const makeEvent = (bridgeId: string): Event => ({
   createdAt: new Date(),
 })
 
+const allCategories = { deployments: true, backups: true, scheduledTasks: true, servers: true }
+
 /**
  * builds a minimal device
  */
@@ -193,6 +195,39 @@ describe("dispatchEvent", () => {
     // revoke the link, then dispatch
     const { cloudLinks } = await import("@/db/schema")
     await db.update(cloudLinks).set({ revokedAt: new Date() }).where(eq(cloudLinks.id, cloudLink.id))
+
+    await dispatchEvent(makeEvent(bridge.id))
+
+    expect(send).not.toHaveBeenCalled()
+  })
+
+  test("skips devices that muted the event's category", async () => {
+    const { bridge, cloudLink } = await seedAuthedSession()
+    await seedDevice(cloudLink.id, {
+      preferences: {
+        timeZone: "UTC",
+        quietHours: null,
+        categories: { deployments: false, backups: true, scheduledTasks: true, servers: true },
+      },
+    })
+
+    await dispatchEvent({ ...makeEvent(bridge.id), category: "deployments" })
+
+    expect(send).not.toHaveBeenCalled()
+  })
+
+  test("skips devices in their quiet hours", async () => {
+    const { bridge, cloudLink } = await seedAuthedSession()
+    // a window around the current minute, wrapping past midnight when needed
+    const now = new Date()
+    const minute = now.getUTCHours() * 60 + now.getUTCMinutes()
+    await seedDevice(cloudLink.id, {
+      preferences: {
+        timeZone: "UTC",
+        quietHours: { from: (minute + 1440 - 30) % 1440, to: (minute + 30) % 1440 },
+        categories: allCategories,
+      },
+    })
 
     await dispatchEvent(makeEvent(bridge.id))
 

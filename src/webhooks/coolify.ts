@@ -80,6 +80,7 @@ coolifyWebhook.post("/:secret", zValidator("json", coolifyWebhookSchema), async 
     resourceId: normalized.resource?.id,
     resourceName: normalized.resource?.name,
     metadata: normalized.metadata,
+    category: normalized.category,
     createdAt: event.createdAt,
   })
 

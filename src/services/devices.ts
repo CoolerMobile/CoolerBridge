@@ -21,6 +21,7 @@ export const activeDevices = async (event: Event) => {
       cloudLinkId: devices.cloudLinkId,
       platform: devices.platform,
       pushToken: devices.pushToken,
+      preferences: devices.preferences,
       createdAt: devices.createdAt,
       lastSeenAt: devices.lastSeenAt,
     })

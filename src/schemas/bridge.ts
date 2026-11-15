@@ -32,6 +32,45 @@ export const pairingStatusParamsSchema = z.object({
 })
 // #endregion
 
+// #region Device Preferences Schema
+/**
+ * minutes since local midnight
+ */
+const minuteOfDay = z.number().int().min(0).max(1439)
+
+/**
+ * @docs Notification preferences a device keeps on the bridge: its IANA time
+ * zone, optional quiet hours as minutes since local midnight (overnight ranges
+ * such as 22:00 to 07:00 are allowed), and which alert categories it wants.
+ * The bridge sends nothing to a device during its quiet hours or for a muted
+ * category.
+ */
+export const devicePreferencesSchema = z.object({
+  timeZone: z.string().refine((timeZone) => {
+    try {
+      new Intl.DateTimeFormat("en-US", { timeZone })
+      return true
+    } catch {
+      return false
+    }
+  }, "invalid time zone"),
+  quietHours: z.object({ from: minuteOfDay, to: minuteOfDay }).nullable(),
+  categories: z.object({
+    deployments: z.boolean(),
+    backups: z.boolean(),
+    scheduledTasks: z.boolean(),
+    servers: z.boolean(),
+  }),
+})
+// #endregion
+
+// #region Device Preferences Type
+/**
+ * @docs The validated notification preferences of a device.
+ */
+export type DevicePreferences = z.infer<typeof devicePreferencesSchema>
+// #endregion
+
 // #region Auth Variables
 /**
  * @docs Hono context variables set by the auth middleware, exposing the active

@@ -17,6 +17,8 @@ export type CoolerEvent = {
     type: "application" | "database" | "server" | "container"
   }
   metadata?: Record<string, unknown>
+  // alert category a device can mute, not stored
+  category?: EventCategory
 }
 // #endregion
 
@@ -100,6 +102,45 @@ export const coolifyEvents: Record<
   api_token_failing: { title: "API token failing", severity: "warning" },
   general: { title: "Coolify" },
   test: { title: "Test notification", severity: "info" },
+}
+// #endregion
+
+// #region Event Category
+/**
+ * alert categories a device can mute, matching cooler's alert settings
+ *
+ * @docs The alert categories a device can turn off in Cooler's settings.
+ */
+export type EventCategory = "deployments" | "backups" | "scheduledTasks" | "servers"
+
+/**
+ * picks the alert category of a coolify event
+ *
+ * events coolify always sends, and events this bridge does not know yet, have
+ * no category so they can never be muted by accident
+ *
+ * @param event raw coolify event identifier
+ *
+ * @returns {EventCategory | undefined} category or undefined when it cannot be muted
+ *
+ * @docs Maps a Coolify event to the alert category a device can turn off.
+ * Events Coolify always sends (general messages, tests and failing API tokens)
+ * and events this bridge does not know yet belong to no category, so they are
+ * always delivered.
+ */
+export const eventCategory = (event: string): EventCategory | undefined => {
+  if (!coolifyEvents[event] || ["general", "test", "api_token_failing"].includes(event)) return undefined
+
+  if (event.includes("backup")) return "backups"
+  if (event.startsWith("task_")) return "scheduledTasks"
+  if (
+    event.startsWith("deployment") ||
+    ["status_changed", "restart_limit_reached", "container_restarted"].includes(event)
+  ) {
+    return "deployments"
+  }
+
+  return "servers"
 }
 // #endregion
 
@@ -207,6 +248,7 @@ export const normalizeEvent = (payload: CoolifyWebhook): CoolerEvent => {
     createdAt: new Date().toISOString(),
     resource: resolveResource(payload, known?.resource),
     metadata: collectMetadata(payload),
+    category: eventCategory(payload.event),
   }
 }
 // #endregion

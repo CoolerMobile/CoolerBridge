@@ -1,3 +1,4 @@
+import type { DevicePreferences } from "@/schemas/bridge"
 import { OperatingSystem } from "@/schemas/cooler"
 import { BridgeScope } from "@/services/scopes"
 import { boolean, jsonb, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core"
@@ -153,8 +154,9 @@ export const sessions = pgTable("sessions", {
 // #region Devices Table
 /**
  * @docs Registered push targets per cloud link, holding the platform and Expo
- * push token with activity and revocation timestamps, plus the digest of the
- * token the device uses to read the events it is notified about.
+ * push token with activity and revocation timestamps, the digest of the token
+ * the device uses to read the events it is notified about, and its notification
+ * preferences.
  */
 // devices table
 export const devices = pgTable("devices", {
@@ -168,6 +170,8 @@ export const devices = pgTable("devices", {
   pushToken: text().notNull().unique(),
   // digest of the token the device reads pushed events with
   eventTokenDigest: text("event_token_digest").unique(),
+  // quiet hours and muted categories, null until the device reports them
+  preferences: jsonb("preferences").$type<DevicePreferences>(),
   createdAt: timestamp("created_at", {
     withTimezone: true,
   })

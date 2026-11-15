@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm"
 import { db } from "@/db"
 import { bridges, cloudLinks, devices, events, pairingChallenges, sessions } from "@/db/schema"
 import { generateSessionToken, tokenDigest } from "@/auth/utils"
+import type { DevicePreferences } from "@/schemas/bridge"
 import type { OperatingSystem } from "@/schemas/cooler"
 
 /**
@@ -147,6 +148,7 @@ export const seedDevice = async (
     platform: OperatingSystem
     pushToken: string
     eventTokenDigest: string | null
+    preferences: DevicePreferences | null
     revokedAt: Date | null
   }> = {}
 ) => {
@@ -157,6 +159,7 @@ export const seedDevice = async (
       platform: overrides.platform ?? "ios",
       pushToken: overrides.pushToken ?? `ExponentPushToken[${crypto.randomUUID()}]`,
       eventTokenDigest: overrides.eventTokenDigest ?? null,
+      preferences: overrides.preferences ?? null,
       revokedAt: overrides.revokedAt ?? null,
     })
     .returning()
