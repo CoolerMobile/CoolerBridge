@@ -7,14 +7,14 @@ import { and, eq, inArray, isNull } from "drizzle-orm"
 /**
  * get current user's active devices
  *
- * @param event cooler event
+ * @param event cooler event or anything carrying its bridge id
  *
  * @returns active device list
  *
  * @docs Returns the active, non-revoked devices linked to the bridge that owns
  * a given event.
  */
-export const activeDevices = async (event: Event) => {
+export const activeDevices = async (event: Pick<Event, "bridgeId">) => {
   return await db
     .select({
       id: devices.id,

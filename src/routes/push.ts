@@ -2,7 +2,8 @@ import { and, eq } from "drizzle-orm"
 import { Hono } from "hono"
 import { db } from "@/db"
 import { events } from "@/db/schema"
-import { requireDevice } from "@/auth/middleware"
+import { requireAuth, requireDevice, requireScopes } from "@/auth/middleware"
+import { dispatchTestEvent } from "@/services/notifications/dispatch"
 
 export const pushRoutes = new Hono()
 
@@ -36,5 +37,31 @@ pushRoutes.get("/events/:id", requireDevice, async (context) => {
 
   // return json-encoded event data
   return context.json(event)
+})
+// #endregion
+
+// #region Test Push Route
+/**
+ * @docs Sends a test notification to every active device linked to the
+ * session's bridge, ignoring quiet hours and muted categories, and reports
+ * how each delivery went. The test is stored as an event, so it shows up in
+ * the app like any other. Requires the push:test scope.
+ */
+// send a test push to every linked device
+pushRoutes.post("/test", requireAuth, requireScopes(["push:test"]), async (context) => {
+  // cloud link
+  const cloudLink = context.get("cloudLink")
+
+  // store & dispatch the test event
+  const { eventId, devices, deliveries } = await dispatchTestEvent(cloudLink.bridgeId)
+
+  // return delivery outcome
+  return context.json({
+    eventId,
+    devices,
+    delivered: deliveries.filter((delivery) => delivery.status === "ok").length,
+    failed: deliveries.filter((delivery) => delivery.status === "error").length,
+    deliveries,
+  })
 })
 // #endregion
