@@ -22,8 +22,8 @@ In short:
 
 1. Coolify sends a notification to your CoolerBridge webhook URL.
 2. CoolerBridge normalizes the payload and stores it as an event, scoped to the originating bridge.
-3. Linked devices receive a data-only push through [Expo](https://expo.dev), which fans out to APNs (iOS) and FCM (Android). It carries the event id, not its content.
-4. Cooler fetches the event through CoolerBridge's own API and shows the notification itself.
+3. Linked devices receive a push through [Expo](https://expo.dev), which fans out to APNs (iOS) and FCM (Android). It carries the event id, not its content.
+4. Cooler fetches the event from CoolerBridge the moment the push arrives and shows it as the notification.
 
 ### Features
 
@@ -166,7 +166,12 @@ If you set `CLOUD_PUBLIC_KEY` on an older version, remove it from your `.env` so
 
 Push notifications are handled for you. There is nothing to set up, paste, or maintain on the bridge for them to work.
 
-When an event is ingested, the bridge sends a data-only push through [Expo](https://expo.dev), which fans it out to APNs (iOS) and FCM (Android) and delivers it to your linked devices. The push carries only the event and bridge ids, never the event's title, message or details, so neither Expo, Apple nor Google can read what happened. Cooler wakes up, fetches the event from your bridge over an authenticated request and presents the notification on the device.
+When an event is ingested, the bridge sends a push through [Expo](https://expo.dev), which fans it out to APNs (iOS) and FCM (Android) and delivers it to your linked devices. The push carries only the event and bridge ids, never the event's title, message or details, so neither Expo, Apple nor Google can read what happened. The device fetches the event from your bridge as the push arrives and shows it as the notification:
+
+- **iOS** receives a generic "New Coolify event" alert. Cooler's notification service extension replaces it with the fetched event before it appears, even when the app is closed. The generic alert only stays if the event cannot be fetched.
+- **Android** receives a high priority data-only message, which wakes Cooler to fetch and show the event.
+
+Each device reads events with its own event token, issued when it registers with the bridge and revoked along with the device, so a notification never depends on an app session or on CoolerCloud being reachable. Your bridge does need to be reachable from the device's network for the event to be fetched.
 
 Every field Coolify sends is stored with the event, so the app has the full context (resource, error output, disk usage and so on) without any of it leaving your bridge in a push.
 

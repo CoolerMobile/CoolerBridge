@@ -17,34 +17,64 @@ import { Expo, type ExpoPushMessage, type ExpoPushTicket } from "expo-server-sdk
 const expo = new Expo()
 // #endregion
 
+// #region Placeholder Alert
+/**
+ * generic alert an ios push carries until the app replaces it
+ *
+ * @docs The generic alert an iOS push carries. Cooler's notification service
+ * extension replaces it with the fetched event before it is shown, and it only
+ * stays when the event cannot be fetched.
+ */
+export const PLACEHOLDER_ALERT = {
+  title: "New Coolify event",
+  body: "Open Cooler to see the details.",
+}
+// #endregion
+
 // #region Build Message
 /**
  * builds an expo push message for a device
  *
- * the message is data only and never carries event content, the app fetches
- * the event from the bridge by id and presents it locally
+ * the message never carries event content, only ids, the app fetches the event
+ * from the bridge and presents it
+ *
+ * ios gets a generic mutable alert so the notification service extension runs
+ * on every push and swaps in the fetched event, android gets a high priority
+ * data-only message the app presents itself
  *
  * @param device device to deliver to
  * @param event cooler event to deliver
  *
  * @returns {ExpoPushMessage} expo push message
  *
- * @docs Builds a data-only Expo push message for a device. It carries only the
- * event and bridge ids, never the event content, so Expo, APNs and FCM never
- * see what happened. The app fetches the event from the bridge and presents it
- * itself.
+ * @docs Builds an Expo push message for a device. It carries only the event and
+ * bridge ids, never the event content, so Expo, APNs and FCM never see what
+ * happened. On iOS it is a generic alert that Cooler's notification service
+ * extension rewrites with the fetched event before it is shown, and on Android
+ * a high priority data-only message that Cooler presents itself.
  */
-export const buildMessage = (device: Device, event: Event): ExpoPushMessage => ({
-  to: device.pushToken,
-  priority: "high",
-  // wakes the app in the background on iOS
-  _contentAvailable: true,
-  data: {
-    type: "event.available",
-    eventId: event.id,
-    bridgeId: event.bridgeId,
-  },
-})
+export const buildMessage = (device: Device, event: Event): ExpoPushMessage => {
+  const message: ExpoPushMessage = {
+    to: device.pushToken,
+    priority: "high",
+    data: {
+      type: "event.available",
+      eventId: event.id,
+      bridgeId: event.bridgeId,
+    },
+  }
+
+  // android presents the fetched event itself
+  if (device.platform !== "ios") return message
+
+  return {
+    ...message,
+    ...PLACEHOLDER_ALERT,
+    sound: "default",
+    // runs the notification service extension
+    mutableContent: true,
+  }
+}
 // #endregion
 
 // #region Expo Push Provider

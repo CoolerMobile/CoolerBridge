@@ -5,7 +5,7 @@ import { db } from "@/db"
 import { devices } from "@/db/schema"
 import type { Device, Event } from "@/schemas/cooler"
 import { dispatchEvent } from "@/services/notifications/dispatch"
-import { buildMessage, expoPushProvider } from "@/services/notifications/expo"
+import { buildMessage, expoPushProvider, PLACEHOLDER_ALERT } from "@/services/notifications/expo"
 import { resetDb, seedAuthedSession, seedDevice } from "../helpers/db"
 
 // stub expo's network call and observe the error logger
@@ -31,8 +31,8 @@ const makeEvent = (bridgeId: string): Event => ({
   bridgeId,
   type: "deployment_success",
   severity: "success",
-  title: "ok",
-  message: "done",
+  title: "Deployment successful",
+  message: "web deployed",
   createdAt: new Date(),
 })
 
@@ -50,18 +50,36 @@ const makeDevice = (overrides: Partial<Device> = {}): Device => ({
 })
 
 describe("buildMessage", () => {
-  test("carries only identifiers, never event content", () => {
-    const device = makeDevice()
-    const event = { ...makeEvent(crypto.randomUUID()), metadata: { errorOutput: "secret" } }
+  const event = { ...makeEvent(crypto.randomUUID()), metadata: { errorOutput: "secret" } }
+  const data = { type: "event.available", eventId: event.id, bridgeId: event.bridgeId }
 
-    const message = buildMessage(device, event)
+  test("sends ios a generic mutable alert the extension rewrites", () => {
+    const device = makeDevice({ platform: "ios" })
 
-    expect(message).toEqual({
+    expect(buildMessage(device, event)).toEqual({
       to: device.pushToken,
       priority: "high",
-      _contentAvailable: true,
-      data: { type: "event.available", eventId: event.id, bridgeId: event.bridgeId },
+      ...PLACEHOLDER_ALERT,
+      sound: "default",
+      mutableContent: true,
+      data,
     })
+  })
+
+  test("sends android a data-only message", () => {
+    const device = makeDevice({ platform: "android" })
+
+    expect(buildMessage(device, event)).toEqual({ to: device.pushToken, priority: "high", data })
+  })
+
+  test("never carries event content", () => {
+    for (const platform of ["ios", "android"] as const) {
+      const serialized = JSON.stringify(buildMessage(makeDevice({ platform }), event))
+
+      expect(serialized).not.toContain(event.title)
+      expect(serialized).not.toContain(event.message)
+      expect(serialized).not.toContain("secret")
+    }
   })
 })
 
