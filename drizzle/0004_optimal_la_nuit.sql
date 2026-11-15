@@ -1,0 +1,1 @@
+ALTER TABLE "pairing_challenges" ADD COLUMN "assertion_jti" text;

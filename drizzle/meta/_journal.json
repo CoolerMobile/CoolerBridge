@@ -1,0 +1,55 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1792976649916,
+      "tag": "0000_pink_sleepwalker",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1793223296708,
+      "tag": "0001_jazzy_alex_wilder",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793296529202,
+      "tag": "0002_empty_whirlwind",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1793318948195,
+      "tag": "0003_majestic_micromax",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1794358423972,
+      "tag": "0004_optimal_la_nuit",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1794701325336,
+      "tag": "0005_cheerful_vulture",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1794774837211,
+      "tag": "0006_lucky_the_enforcers",
+      "breakpoints": true
+    }
+  ]
+}
