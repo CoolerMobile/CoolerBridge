@@ -201,23 +201,29 @@ CoolerBridge is built with [Bun](https://bun.sh), [Hono](https://hono.dev), and 
    bun gen:keys
    ```
 
-4. Apply the schema and run the dev server:
+4. Apply the migrations and run the dev server:
 
    ```bash
-   bun db:push
+   bun db:migrate
    bun dev
    ```
 
 Useful scripts:
 
-| Script            | Description                                 |
-| ----------------- | ------------------------------------------- |
-| `bun dev`         | Run the server in watch mode (development). |
-| `bun test`        | Run the test suite.                         |
-| `bun db:generate` | Generate a new migration from the schema.   |
-| `bun db:migrate`  | Apply migrations.                           |
-| `bun db:push`     | Push the schema directly to the database.   |
-| `bun db:studio`   | Open Drizzle Studio.                        |
+| Script            | Description                                                  |
+| ----------------- | ------------------------------------------------------------ |
+| `bun dev`         | Run the server in watch mode (development).                  |
+| `bun test`        | Run the test suite.                                          |
+| `bun db:generate` | Generate a migration from changes to `src/db/schema.ts`.     |
+| `bun db:migrate`  | Apply pending migrations.                                    |
+| `bun db:push`     | Push the schema directly to the database (experiments only). |
+| `bun db:studio`   | Open Drizzle Studio.                                         |
+
+### Schema changes
+
+The schema is versioned with the migrations in `drizzle/`. After changing `src/db/schema.ts`, run `bun db:generate` and commit the new migration alongside the change. The test suite builds its database from these migrations, so tests that exercise a change with no migration fail.
+
+The container applies pending migrations on every start, before the server runs. Databases created by earlier releases, which synced the schema with `drizzle-kit push`, are adopted automatically on the first start: each committed migration is replayed, changes that are already in place are skipped, and the result is recorded so regular migrations take over from there.
 
 ## Releases
 
