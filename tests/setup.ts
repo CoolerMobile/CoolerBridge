@@ -1,4 +1,5 @@
 import postgres from "postgres"
+import { runMigrations } from "@/db/migrate"
 
 /**
  * global test preload
@@ -8,9 +9,9 @@ import postgres from "postgres"
  * freely, and forces development mode so the auth layer loads
  * the dev keys instead of exiting
  *
- * the schema is applied straight from src/db/schema.ts with
- * drizzle-kit push, so tests always track the live schema rather
- * than the committed migrations
+ * the schema is applied with the committed migrations, the same
+ * path production takes, so a schema change without a generated
+ * migration fails the tests that use it
  */
 
 // force dev mode before any module reads it
@@ -48,19 +49,8 @@ await admin.unsafe(`CREATE DATABASE "${testDbName}"`)
 await admin.end()
 
 // point every module at the test database
-// must happen before "@/db" is imported anywhere and before
-// drizzle-kit push reads the connection string
+// must happen before "@/db" is imported anywhere
 process.env.DATABASE_URL = testUrl.toString()
 
-// apply the current schema to the fresh test database
-const push = Bun.spawn(["bunx", "drizzle-kit", "push", "--force"], {
-  env: process.env,
-  stdout: "pipe",
-  stderr: "pipe",
-})
-
-const pushCode = await push.exited
-if (pushCode !== 0) {
-  const err = await new Response(push.stderr).text()
-  throw new Error(`drizzle-kit push failed (${pushCode}):\n${err}`)
-}
+// apply the committed migrations to the fresh test database
+await runMigrations(testUrl.toString())

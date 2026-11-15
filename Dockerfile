@@ -12,5 +12,5 @@ COPY . .
 ENV NODE_ENV=production
 EXPOSE 3000
 
-# sync the schema to postgres, then start the server
-CMD ["sh", "-c", "bun run db:push && bun run src/index.ts"]
+# apply pending migrations, then start the server
+CMD ["sh", "-c", "bun run db:migrate && bun run src/index.ts"]

@@ -10,7 +10,7 @@
     "test": "bun test",
     "test:watch": "bun test --watch",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
+    "db:migrate": "bun src/db/migrate.ts",
     "db:push": "drizzle-kit push --force",
     "db:studio": "drizzle-kit studio",
     "gen:keys": "bun dev/gen-cloud-keys.ts",
