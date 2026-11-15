@@ -1,4 +1,5 @@
 import { requireAuth, requireScopes } from "@/auth/middleware"
+import { generateSessionToken, tokenDigest } from "@/auth/utils"
 import { db } from "@/db"
 import { cloudLinks, devices } from "@/db/schema"
 import { zValidator } from "@hono/zod-validator"
@@ -21,6 +22,19 @@ const deviceSchema = z.object({
     pushToken: z.string().refine(Expo.isExpoPushToken, "invalid expo push token"),
   }),
 })
+// #endregion
+
+// #region Public Device
+/**
+ * strips fields a device row must never expose
+ *
+ * @param device device row
+ *
+ * @returns device without its event token digest
+ *
+ * @docs Removes the event token digest from a device before it is returned.
+ */
+const publicDevice = ({ eventTokenDigest: _, ...device }: typeof devices.$inferSelect) => device
 // #endregion
 
 // #region List Devices Route
@@ -51,7 +65,7 @@ deviceRoutes.get("/", requireAuth, requireScopes(["devices:read"]), async (conte
     .orderBy(desc(devices.createdAt))
 
   // return json-encoded device list
-  return context.json(deviceList)
+  return context.json(deviceList.map(publicDevice))
 })
 // #endregion
 
@@ -60,7 +74,9 @@ deviceRoutes.get("/", requireAuth, requireScopes(["devices:read"]), async (conte
  * @docs Registers a device under the authenticated account's cloud link,
  * requiring the devices:write scope. A push token identifies one app install,
  * so registering a token the bridge already knows moves that device to the
- * registering link, as when a phone pairs again, instead of failing.
+ * registering link, as when a phone pairs again, instead of failing. Every
+ * registration issues a fresh event token, returned once as `eventToken`, that
+ * the device uses to read the events it is pushed.
  */
 // create device
 deviceRoutes.post(
@@ -83,6 +99,10 @@ deviceRoutes.post(
       )
     }
 
+    // event token, rotated on every registration
+    const eventToken = generateSessionToken()
+    const eventTokenDigest = tokenDigest(eventToken)
+
     // create device for current user's cloud link
     // a known push token is the same install, so it moves here and is restored
     const [device] = await db
@@ -90,15 +110,16 @@ deviceRoutes.post(
       .values({
         ...deviceData,
         cloudLinkId: cloudLink.id,
+        eventTokenDigest,
       })
       .onConflictDoUpdate({
         target: devices.pushToken,
-        set: { platform: deviceData.platform, cloudLinkId: cloudLink.id, revokedAt: null },
+        set: { platform: deviceData.platform, cloudLinkId: cloudLink.id, eventTokenDigest, revokedAt: null },
       })
       .returning()
 
-    // return created device
-    return context.json(device, 201)
+    // return created device, the event token is only ever shown here
+    return context.json({ ...publicDevice(device!), eventToken }, 201)
   }
 )
 // #endregion

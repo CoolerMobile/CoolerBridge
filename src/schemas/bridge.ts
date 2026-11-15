@@ -1,5 +1,5 @@
 import z from "zod"
-import { cloudLinks, sessions } from "@/db/schema"
+import { cloudLinks, devices, sessions } from "@/db/schema"
 
 // #region Complete Pairing Schema
 /**
@@ -39,6 +39,17 @@ export const pairingStatusParamsSchema = z.object({
  */
 export type AuthVariables = {
   session: typeof sessions.$inferSelect
+  cloudLink: typeof cloudLinks.$inferSelect
+}
+// #endregion
+
+// #region Device Auth Variables
+/**
+ * @docs Hono context variables set by the device auth middleware, exposing the
+ * authenticated device and its cloud link to downstream handlers.
+ */
+export type DeviceAuthVariables = {
+  device: typeof devices.$inferSelect
   cloudLink: typeof cloudLinks.$inferSelect
 }
 // #endregion

@@ -153,7 +153,8 @@ export const sessions = pgTable("sessions", {
 // #region Devices Table
 /**
  * @docs Registered push targets per cloud link, holding the platform and Expo
- * push token with activity and revocation timestamps.
+ * push token with activity and revocation timestamps, plus the digest of the
+ * token the device uses to read the events it is notified about.
  */
 // devices table
 export const devices = pgTable("devices", {
@@ -165,6 +166,8 @@ export const devices = pgTable("devices", {
     }),
   platform: text().$type<OperatingSystem>().notNull(),
   pushToken: text().notNull().unique(),
+  // digest of the token the device reads pushed events with
+  eventTokenDigest: text("event_token_digest").unique(),
   createdAt: timestamp("created_at", {
     withTimezone: true,
   })

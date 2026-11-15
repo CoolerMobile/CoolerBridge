@@ -146,6 +146,7 @@ export const seedDevice = async (
   overrides: Partial<{
     platform: OperatingSystem
     pushToken: string
+    eventTokenDigest: string | null
     revokedAt: Date | null
   }> = {}
 ) => {
@@ -155,6 +156,7 @@ export const seedDevice = async (
       cloudLinkId,
       platform: overrides.platform ?? "ios",
       pushToken: overrides.pushToken ?? `ExponentPushToken[${crypto.randomUUID()}]`,
+      eventTokenDigest: overrides.eventTokenDigest ?? null,
       revokedAt: overrides.revokedAt ?? null,
     })
     .returning()

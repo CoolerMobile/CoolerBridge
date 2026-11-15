@@ -1,9 +1,9 @@
-import { AuthVariables } from "@/schemas/bridge"
+import { AuthVariables, DeviceAuthVariables } from "@/schemas/bridge"
 import { createMiddleware } from "hono/factory"
 import { tokenDigest } from "@/auth/utils"
 import { db } from "@/db"
 import { and, eq, gt, isNull } from "drizzle-orm"
-import { cloudLinks, sessions } from "@/db/schema"
+import { cloudLinks, devices, sessions } from "@/db/schema"
 import { BridgeScope, hasScope } from "@/services/scopes"
 import { isContingencyActive } from "@/services/contingency"
 
@@ -80,6 +80,87 @@ export const requireAuth = createMiddleware<{ Variables: AuthVariables }>(async 
 
   // set session & cloud link for current context
   context.set("session", session)
+  context.set("cloudLink", cloudLink)
+
+  // proceed
+  await next()
+})
+// #endregion
+
+// #region Require Device
+/**
+ * auth-gate for routes a device calls while presenting a push
+ *
+ * the event token outlives sessions so a push arriving hours after the app
+ * last ran can still be presented, it dies with its device
+ *
+ * @docs Middleware that authenticates a device event token, resolves its active
+ * device and cloud link, and exposes them to the handler. Event tokens are
+ * issued when a device registers and stop working once the device or its link
+ * is revoked.
+ */
+export const requireDevice = createMiddleware<{ Variables: DeviceAuthVariables }>(async (context, next) => {
+  // authorization header
+  const authHeader = context.req.header("Authorization")
+
+  // validate authorization type
+  // must match "Bearer *"
+  if (!authHeader?.startsWith("Bearer ")) {
+    return context.json(
+      {
+        error: "Unauthorized",
+      },
+      401
+    )
+  }
+
+  // token & digest
+  const token = authHeader.slice("Bearer ".length)
+  const digest = tokenDigest(token)
+
+  // device
+  const device = await db.query.devices.findFirst({
+    where: and(eq(devices.eventTokenDigest, digest), isNull(devices.revokedAt)),
+  })
+
+  // validate device
+  if (!device) {
+    return context.json(
+      {
+        error: "Unauthorized",
+      },
+      401
+    )
+  }
+
+  // cloud link
+  const cloudLink = await db.query.cloudLinks.findFirst({
+    where: eq(cloudLinks.id, device.cloudLinkId),
+  })
+
+  // validate cloud link
+  // checks if a link exists and if it hasn't been revoked
+  if (!cloudLink || cloudLink.revokedAt) {
+    return context.json(
+      {
+        error: "Unauthorized",
+      },
+      401
+    )
+  }
+
+  // contingency gate - a raised moat makes every bridge non-operational
+  if (await isContingencyActive({ cloudUserId: cloudLink.cloudUserId, bridgeId: cloudLink.bridgeId })) {
+    return context.json(
+      {
+        error: "Account in contingency mode",
+      },
+      423
+    )
+  }
+
+  // set device & cloud link for current context
+  context.set("device", device)
   context.set("cloudLink", cloudLink)
 
   // proceed

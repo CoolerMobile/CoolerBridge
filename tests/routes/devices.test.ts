@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm"
 import app from "@/index"
 import { db } from "@/db"
 import { devices } from "@/db/schema"
+import { tokenDigest } from "@/auth/utils"
 import { resetDb, seedAuthedSession, seedDevice } from "../helpers/db"
 
 beforeEach(resetDb)
@@ -28,6 +29,7 @@ describe("GET /v1/devices", () => {
     expect(res.status).toBe(200)
     const list = await res.json()
     expect(list).toHaveLength(2)
+    expect(list[0]).not.toHaveProperty("eventTokenDigest")
     expect(list[0].id).toBe(newer.id)
     expect(list[1].id).toBe(older.id)
   })
@@ -75,6 +77,39 @@ describe("POST /v1/devices", () => {
 
     const [row] = await db.select().from(devices).where(eq(devices.id, device.id))
     expect(row).toBeDefined()
+  })
+
+  test("issues an event token and only stores its digest", async () => {
+    const { token } = await seedAuthedSession(["devices:read", "devices:write"])
+
+    const res = await app.request("/v1/devices", {
+      ...body({ platform: "ios", pushToken: "ExponentPushToken[tok-4]" }),
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    })
+
+    const device = await res.json()
+    expect(device.eventToken).toBeString()
+    expect(device).not.toHaveProperty("eventTokenDigest")
+
+    const [row] = await db.select().from(devices).where(eq(devices.id, device.id))
+    expect(row!.eventTokenDigest).toBe(tokenDigest(device.eventToken))
+  })
+
+  test("rotates the event token when the device registers again", async () => {
+    const { token } = await seedAuthedSession(["devices:read", "devices:write"])
+    const register = async () =>
+      (
+        await app.request("/v1/devices", {
+          ...body({ platform: "ios", pushToken: "ExponentPushToken[tok-5]" }),
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        })
+      ).json()
+
+    const first = await register()
+    const second = await register()
+
+    expect(second.id).toBe(first.id)
+    expect(second.eventToken).not.toBe(first.eventToken)
   })
 
   test("moves a known push token to the registering link instead of failing", async () => {

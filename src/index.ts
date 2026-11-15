@@ -7,6 +7,7 @@ import { eventRoutes } from "@/routes/events"
 import { pairingRoutes } from "@/routes/pair"
 import { authRoutes } from "@/routes/auth"
 import { deviceRoutes } from "@/routes/devices"
+import { pushRoutes } from "@/routes/push"
 
 const app = new Hono()
 
@@ -27,7 +28,8 @@ app.get("/", (context) => {
 /**
  * @docs Mounts every router onto the Hono app: the public info and health
  * routes, the Coolify webhook, the auth, bridge, and pairing connection
- * routes, and the events and devices data routes.
+ * routes, the events and devices data routes, and the route devices read
+ * pushed events through.
  */
 // basic routes
 app.route("/info", infoRoute)
@@ -44,6 +46,9 @@ app.route("/v1/pairing", pairingRoutes)
 // data
 app.route("/v1/events", eventRoutes)
 app.route("/v1/devices", deviceRoutes)
+
+// push presentation
+app.route("/v1/push", pushRoutes)
 // #endregion
 
 // export api
