@@ -229,7 +229,9 @@ To cut a release, trigger the workflow:
 bun run release
 ```
 
-This dispatches the `Release` workflow, which:
+The workflow builds what is on GitHub, so the script first checks that your working tree is clean and your branch is in step with `origin`. It offers to push any unpushed commits (or fast-forward a branch that is behind) and stops if the tree is dirty or the branch has diverged. Set `PREFLIGHT_YES=1` to accept those offers without a prompt. `bun run gen:docs` runs the same check before dispatching the docs workflow.
+
+It then dispatches the `Release` workflow on the current branch, which:
 
 1. Runs the test suite.
 2. Inspects the commits since the last release and computes the next version (a `feat` bumps the minor, a `fix` the patch, and a breaking change the major).
