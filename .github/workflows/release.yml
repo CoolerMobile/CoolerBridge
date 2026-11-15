@@ -98,11 +98,16 @@ jobs:
             --notes-file RELEASE_NOTES.md \
             --generate-notes
 
+      # this job's commit and release are made with the default GITHUB_TOKEN,
+      # whose events do not trigger other workflows, so the bridge and docs
+      # deploys that ship the new version are kicked off from here, after the
+      # release, both without build cache
+      - name: Trigger bridge deploy
+        env:
+          COOLIFY_API_TOKEN: ${{ secrets.COOLIFY_API_TOKEN }}
+        run: sh scripts/coolify-deploy.sh "${{ secrets.COOLIFY_BRIDGE_DEPLOY_HOOK }}"
+
       - name: Trigger docs deploy
-        # this job's commit and release are made with the default GITHUB_TOKEN,
-        # whose events do not trigger other workflows, so the docs deploy that
-        # publishes the new version is kicked off from here, after the release
-        run: |
-          curl --fail --silent --show-error \
-            --request POST "${{ secrets.COOLIFY_DOCS_DEPLOY_HOOK }}" \
-            --header "Authorization: Bearer ${{ secrets.COOLIFY_API_TOKEN }}"
+        env:
+          COOLIFY_API_TOKEN: ${{ secrets.COOLIFY_API_TOKEN }}
+        run: sh scripts/coolify-deploy.sh "${{ secrets.COOLIFY_DOCS_DEPLOY_HOOK }}"

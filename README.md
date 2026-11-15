@@ -238,9 +238,19 @@ Releases are cut from `main` only, so the script stops on any other branch. It t
 3. Updates the version in `package.json`, commits it, and tags the release.
 4. Builds and pushes the container image to the GitHub Container Registry.
 5. Publishes a GitHub release with a grouped changelog of the included changes.
-6. Redeploys the docs, so they document the new version.
+6. Redeploys the bridge and the docs on Coolify, so both run the new version.
 
-Pushes to `main` also redeploy the docs. To redeploy them on their own, run `bun run gen:docs`.
+The bridge is only redeployed by releases, so it always runs a published version. Pushes to `main` redeploy just the docs. To redeploy the docs on their own, run `bun run gen:docs`.
+
+Every redeploy rebuilds without Coolify's build cache, because cached builds can keep serving stale code. They go through `scripts/coolify-deploy.sh`, which needs these repository secrets:
+
+| Secret                       | Value                                                          |
+| ---------------------------- | -------------------------------------------------------------- |
+| `COOLIFY_API_TOKEN`          | A Coolify API token allowed to deploy.                         |
+| `COOLIFY_BRIDGE_DEPLOY_HOOK` | The bridge resource's deploy webhook URL, copied from Coolify. |
+| `COOLIFY_DOCS_DEPLOY_HOOK`   | The docs resource's deploy webhook URL, copied from Coolify.   |
+
+Turn off Coolify's own auto deploy for the bridge, otherwise every push to `main` deploys it again, with cache and before it is released.
 
 The `bun run release` script requires the [GitHub CLI](https://cli.github.com) to be installed and authenticated.
 
