@@ -15,6 +15,7 @@
         "zod": "^4.6.7",
       },
       "devDependencies": {
+        "@danfq/nextver": "^1.0.0",
         "@types/bun": "latest",
         "dotenv": "^18.0.9",
         "prettier": "^3.9.10",
@@ -22,6 +23,8 @@
     },
   },
   "packages": {
+    "@danfq/nextver": ["@danfq/nextver@1.0.0", "", { "bin": { "nextver": "dist/cli.js" } }, "sha512-UC2tS2zSmuntKr/DISwY11yqI8c06ZJZ4njO6hKzkg6VVhvbAZ5XDEZNJ6iGFeNtou6qHPEI77ssMbLKYAwYZQ=="],
+
     "@drizzle-team/brocli": ["@drizzle-team/brocli@0.10.2", "", {}, "sha512-z33Il7l5dKjUgGULTqBsQBQwckHh5AbIuxhdsIxDDiZAzBOrZO6q9ogcWC65kU382AfynTfgNumVcNIjuIua6w=="],
 
     "@esbuild-kit/core-utils": ["@esbuild-kit/core-utils@3.3.2", "", { "dependencies": { "esbuild": "~0.18.20", "source-map-support": "^0.5.21" } }, "sha512-sPRAnw9CdSsRmEtnsl2WXWdyquogVpB3yZ3dgwJfe8zrOzTsV7cJvmwrKVa+0ma5BoiGJ+BoqkMvawbayKUsqQ=="],

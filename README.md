@@ -242,7 +242,7 @@ The workflow builds what is on GitHub, so the script first checks that your work
 Releases are cut from `main` only, so the script stops on any other branch. It then dispatches the `Release` workflow, which:
 
 1. Runs the test suite.
-2. Inspects the commits since the last release and computes the next version (a `feat` bumps the minor, a `fix` the patch, and a breaking change the major).
+2. Inspects the commits since the last release and computes the next version with [`@danfq/nextver`](https://github.com/danfq/nextver) (a `feat` bumps the minor, a `fix` the patch, and a breaking change the major).
 3. Updates the version in `package.json`, commits it, and tags the release.
 4. Builds and pushes the container image to the GitHub Container Registry.
 5. Publishes a GitHub release with a grouped changelog of the included changes.

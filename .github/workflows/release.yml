@@ -54,7 +54,7 @@ jobs:
 
       - name: Compute version and notes
         id: version
-        run: bun scripts/release.ts
+        run: bunx nextver
 
       - name: Commit and tag release
         run: |
