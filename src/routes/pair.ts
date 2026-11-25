@@ -6,6 +6,7 @@ import { completePairingSchema, pairingStatusParamsSchema, revokePairingSchema }
 import { and, eq, gt, isNull, TransactionRollbackError } from "drizzle-orm"
 import { verifyPairAssertion, verifyRevokeAssertion } from "@/auth/cloud"
 import { codeDigest, generateCode } from "@/auth/utils"
+import { isRelayEntitled } from "@/services/contingency"
 
 export const pairingRoutes = new Hono()
 
@@ -84,7 +85,8 @@ pairingRoutes.get("/:id", zValidator("param", pairingStatusParamsSchema), async 
  * trip through the pairing status route.
  * Pairing again from the same account (such as re-scanning the pairing QR
  * code) keeps the existing link, restoring it if it was revoked, while a
- * bridge already linked to another account is refused.
+ * bridge already linked to another account is refused. The hosted relay only
+ * pairs accounts holding the relay plan, leaving the code unused otherwise.
  */
 // complete pairing
 pairingRoutes.post("/complete", zValidator("json", completePairingSchema), async (context) => {
@@ -131,6 +133,16 @@ pairingRoutes.post("/complete", zValidator("json", completePairingSchema), async
         error: "Pairing assertion does not match challenge",
       },
       401
+    )
+  }
+
+  // relay gate - the hosted relay only pairs relay plan holders
+  if (!(await isRelayEntitled({ cloudUserId: cloud.cloudUserId, bridgeId: cloud.cloudBridgeId }))) {
+    return context.json(
+      {
+        error: "The hosted relay isn't available for this account",
+      },
+      402
     )
   }
 

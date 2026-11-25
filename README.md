@@ -130,17 +130,18 @@ The bridge is now available on port `3000`. The database schema is applied autom
 
 All configuration is provided through environment variables.
 
-| Variable            | Required | Description                                                                                                      |
-| ------------------- | -------- | ---------------------------------------------------------------------------------------------------------------- |
-| `NODE_ENV`          | yes      | `production` uses the baked-in CoolerCloud key and JWKS discovery; `development` reads the key from `dev/keys`.  |
-| `POSTGRES_DB`       | no       | Database name for the bundled Postgres. Defaults to `coolerbridge`.                                              |
-| `POSTGRES_USER`     | no       | Database user for the bundled Postgres. Defaults to `coolerbridge`.                                              |
-| `POSTGRES_PASSWORD` | yes      | Database password. Set a strong, unique value. Generate with `openssl rand -base64 24`.                          |
-| `DATABASE_URL`      | yes      | PostgreSQL connection string. In Compose it is derived from the `POSTGRES_*` values above.                       |
-| `PAIRING_PEPPER`    | yes      | Secret pepper mixed into pairing code digests. Generate with `openssl rand -base64 32`.                          |
-| `CLOUD_PUBLIC_KEY`  | no       | Advanced override for the baked-in CoolerCloud public key (Ed25519 SPKI, PEM). For development and testing only. |
-| `CLOUD_JWKS_URL`    | no       | Advanced override for the JWKS discovery endpoint; set empty to disable discovery. For development and testing.  |
-| `PORT`              | no       | Port the bridge listens on. Defaults to `3000`.                                                                  |
+| Variable                    | Required | Description                                                                                                      |
+| --------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------- |
+| `NODE_ENV`                  | yes      | `production` uses the baked-in CoolerCloud key and JWKS discovery; `development` reads the key from `dev/keys`.  |
+| `POSTGRES_DB`               | no       | Database name for the bundled Postgres. Defaults to `coolerbridge`.                                              |
+| `POSTGRES_USER`             | no       | Database user for the bundled Postgres. Defaults to `coolerbridge`.                                              |
+| `POSTGRES_PASSWORD`         | yes      | Database password. Set a strong, unique value. Generate with `openssl rand -base64 24`.                          |
+| `DATABASE_URL`              | yes      | PostgreSQL connection string. In Compose it is derived from the `POSTGRES_*` values above.                       |
+| `PAIRING_PEPPER`            | yes      | Secret pepper mixed into pairing code digests. Generate with `openssl rand -base64 32`.                          |
+| `CLOUD_PUBLIC_KEY`          | no       | Advanced override for the baked-in CoolerCloud public key (Ed25519 SPKI, PEM). For development and testing only. |
+| `CLOUD_JWKS_URL`            | no       | Advanced override for the JWKS discovery endpoint; set empty to disable discovery. For development and testing.  |
+| `PORT`                      | no       | Port the bridge listens on. Defaults to `3000`.                                                                  |
+| `REQUIRE_RELAY_ENTITLEMENT` | no       | Hosted relay only. Leave unset on a self-hosted bridge; see [Hosted relay](#hosted-relay).                       |
 
 The API version is static (`v1`) and is **not** tied to the bridge's release version. It only changes when the public API itself does.
 
@@ -155,6 +156,18 @@ During a rotation, CoolerCloud keeps publishing the previous key, marked with `"
 Every assertion also declares what it is for through its `typ` header (pairing, access, contingency status, or revocation), and the bridge only accepts each kind where it belongs, so an assertion issued for one purpose can never be replayed for another. Pairing is confirmed in both directions: CoolerCloud only treats a bridge as paired once the bridge itself reports which assertion completed the pairing, and that assertion matches one CoolerCloud signed. Unpairing reaches the bridge too: when a bridge is unpaired from the dashboard or the app, CoolerCloud sends it a signed revocation, and the bridge revokes that account's link along with its sessions and devices, so it stops accepting requests and sending notifications.
 
 `CLOUD_PUBLIC_KEY` and `CLOUD_JWKS_URL` are advanced overrides for development and testing only, such as pointing a bridge at a non-production CoolerCloud or pinning trust to a single key. Leave both unset in normal use.
+
+### Hosted relay
+
+Self-hosted bridges are free and need nothing below. This section only applies to the hosted relay at `https://relay.getcooler.app`, which is a regular CoolerBridge run by Cooler for subscribers of the Push Relay plan.
+
+The hosted relay sets `REQUIRE_RELAY_ENTITLEMENT=true`, alongside `CLOUD_STATUS_URL` and `BRIDGE_RELAY_SECRET`. With it on, the bridge asks CoolerCloud whether an account holds the plan, over the same encrypted status channel and short cache as the contingency check, and:
+
+- Only stores and pushes Coolify events for bridges linked to an account holding the plan. Events for unlinked bridges are refused with `403`, and events for accounts without the plan with `402`.
+- Refuses to pair, issue sessions, or send test notifications for accounts without the plan (`402`).
+- Only lets CoolerCloud create bridges, which presents `BRIDGE_RELAY_SECRET` as a bearer token.
+
+It fails closed: when CoolerCloud can't confirm the plan, the account is treated as not subscribed, regardless of `CONTINGENCY_FAIL_OPEN`.
 
 ### Upgrading
 

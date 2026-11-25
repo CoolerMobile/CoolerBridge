@@ -8,7 +8,7 @@ import { cloudLinks, sessions } from "@/db/schema"
 import { generateSessionToken, tokenDigest } from "@/auth/utils"
 import { requireAuth } from "@/auth/middleware"
 import { isBridgeScope } from "@/services/scopes"
-import { isContingencyActive } from "@/services/contingency"
+import { isContingencyActive, isRelayEntitled } from "@/services/contingency"
 
 export const authRoutes = new Hono()
 
@@ -102,7 +102,8 @@ authRoutes.post("/logout", requireAuth, async (context) => {
 // #region Token Exchange Route
 /**
  * @docs Exchanges a verified cloud access assertion for a scoped, time-limited
- * bridge session token.
+ * bridge session token. The hosted relay only issues sessions to accounts
+ * holding the relay plan.
  */
 authRoutes.post("/exchange", zValidator("json", exchangeSchema), async (context) => {
   // extract assertion from request
@@ -149,6 +150,16 @@ authRoutes.post("/exchange", zValidator("json", exchangeSchema), async (context)
         error: "Account in contingency mode",
       },
       423
+    )
+  }
+
+  // relay gate - the hosted relay only serves relay plan holders
+  if (!(await isRelayEntitled({ cloudUserId: link.cloudUserId, bridgeId: link.bridgeId }))) {
+    return context.json(
+      {
+        error: "The hosted relay isn't available for this account",
+      },
+      402
     )
   }
 

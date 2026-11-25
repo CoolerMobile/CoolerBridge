@@ -16,5 +16,8 @@ declare module "bun" {
     CONTINGENCY_FAIL_OPEN?: string
     // how long a confirmed contingency result is cached, in ms
     CONTINGENCY_TTL_MS?: string
+    // hosted relay only ("true"), serves just accounts holding the relay plan
+    // needs the channel above, unset on self-hosted bridges so they stay free
+    REQUIRE_RELAY_ENTITLEMENT?: string
   }
 }

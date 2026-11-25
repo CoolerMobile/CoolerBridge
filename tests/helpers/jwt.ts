@@ -27,6 +27,9 @@ type AssertionClaims = {
   bridgeId?: unknown
   pairingId?: unknown
   scope?: unknown
+  // status token claims
+  contingency?: unknown
+  relay?: unknown
   issuer?: string
   audience?: string
   expiresIn?: string
@@ -53,6 +56,8 @@ const buildAssertion = (claims: AssertionClaims) => {
   if ("bridgeId" in claims) payload.bridgeId = claims.bridgeId
   if ("pairingId" in claims) payload.pairingId = claims.pairingId
   if ("scope" in claims) payload.scope = claims.scope
+  if ("contingency" in claims) payload.contingency = claims.contingency
+  if ("relay" in claims) payload.relay = claims.relay
 
   // explicit typ, or the one the claims imply
   const typ = claims.typ ?? ("pairingId" in claims ? tokenTypes.pair : tokenTypes.access)

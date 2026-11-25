@@ -2,16 +2,18 @@ import { Hono } from "hono"
 import { db } from "@/db"
 import { bridges } from "@/db/schema"
 import { genSecret } from "@/services/secrets"
+import { requireRelayCaller } from "@/auth/middleware"
 
 export const bridgeRoutes = new Hono()
 
 // #region Create Bridge Route
 /**
  * @docs Creates a new bridge with a cryptographically random secret and returns
- * its id, name, and webhook URL.
+ * its id, name, and webhook URL. On the hosted relay only CoolerCloud may create
+ * bridges, presenting the shared relay secret.
  */
 // creates a new bridge with a random secret id
-bridgeRoutes.post("/", async (context) => {
+bridgeRoutes.post("/", requireRelayCaller, async (context) => {
   // cryptographically random id
   const randomId = genSecret()
 

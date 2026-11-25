@@ -18,10 +18,11 @@ import { runMigrations } from "@/db/migrate"
 // auth/cloud loads its public key based on this
 process.env.NODE_ENV = "development"
 
-// keep the contingency channel off so a local .env never reaches a live cloud
-// services/contingency reads these when first imported
+// keep the status channel and relay gate off so a local .env never reaches a live cloud
+// services/contingency reads these on every check, so tests turn them on where needed
 delete process.env.CLOUD_STATUS_URL
 delete process.env.BRIDGE_RELAY_SECRET
+delete process.env.REQUIRE_RELAY_ENTITLEMENT
 
 // base connection from .env
 const base = process.env.DATABASE_URL

@@ -5,7 +5,8 @@ import { db } from "@/db"
 import { and, eq, gt, isNull } from "drizzle-orm"
 import { cloudLinks, devices, sessions } from "@/db/schema"
 import { BridgeScope, hasScope } from "@/services/scopes"
-import { isContingencyActive } from "@/services/contingency"
+import { isContingencyActive, isRelayGated } from "@/services/contingency"
+import { timingSafeEqual } from "node:crypto"
 
 // #region Require Auth
 /**
@@ -162,6 +163,44 @@ export const requireDevice = createMiddleware<{ Variables: DeviceAuthVariables }
   // set device & cloud link for current context
   context.set("device", device)
   context.set("cloudLink", cloudLink)
+
+  // proceed
+  await next()
+})
+// #endregion
+
+// #region Require Relay Caller
+/**
+ * auth-gate for bridge provisioning on the hosted relay
+ *
+ * the relay secret is already shared with the cloud for status checks, so it
+ * doubles as proof that a provisioning request comes from the cloud, which only
+ * asks for relay plan holders
+ *
+ * @docs Middleware that, on the hosted relay, only lets CoolerCloud create
+ * bridges: the request must present the shared relay secret as a bearer,
+ * compared in constant time, and is refused when no secret is configured.
+ * Self-hosted bridges skip the check entirely.
+ */
+export const requireRelayCaller = createMiddleware(async (context, next) => {
+  // self-hosted bridges provision freely
+  if (!isRelayGated()) return next()
+
+  // presented and expected secrets, refused outright when unset
+  const secret = Bun.env.BRIDGE_RELAY_SECRET
+  const authHeader = context.req.header("Authorization")
+  const presented = Buffer.from(authHeader?.startsWith("Bearer ") ? authHeader.slice("Bearer ".length) : "")
+  const expected = Buffer.from(secret ?? "")
+
+  // constant-time comparison, lengths must match first
+  if (!secret || presented.length !== expected.length || !timingSafeEqual(presented, expected)) {
+    return context.json(
+      {
+        error: "Unauthorized",
+      },
+      401
+    )
+  }
 
   // proceed
   await next()

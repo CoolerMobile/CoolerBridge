@@ -4,6 +4,7 @@ import { db } from "@/db"
 import { events } from "@/db/schema"
 import { requireAuth, requireDevice, requireScopes } from "@/auth/middleware"
 import { dispatchTestEvent } from "@/services/notifications/dispatch"
+import { isRelayEntitled } from "@/services/contingency"
 
 export const pushRoutes = new Hono()
 
@@ -45,12 +46,23 @@ pushRoutes.get("/events/:id", requireDevice, async (context) => {
  * @docs Sends a test notification to every active device linked to the
  * session's bridge, ignoring quiet hours and muted categories, and reports
  * how each delivery went. The test is stored as an event, so it shows up in
- * the app like any other. Requires the push:test scope.
+ * the app like any other. Requires the push:test scope, and on the hosted
+ * relay the relay plan.
  */
 // send a test push to every linked device
 pushRoutes.post("/test", requireAuth, requireScopes(["push:test"]), async (context) => {
   // cloud link
   const cloudLink = context.get("cloudLink")
+
+  // relay gate - the hosted relay only sends for relay plan holders
+  if (!(await isRelayEntitled({ cloudUserId: cloudLink.cloudUserId, bridgeId: cloudLink.bridgeId }))) {
+    return context.json(
+      {
+        error: "The hosted relay isn't available for this account",
+      },
+      402
+    )
+  }
 
   // store & dispatch the test event
   const { eventId, devices, deliveries } = await dispatchTestEvent(cloudLink.bridgeId)
